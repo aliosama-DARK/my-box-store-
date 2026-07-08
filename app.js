@@ -9,20 +9,31 @@ const CART_KEY = "myboxstore_cart";
 // ===== حالة المتجر (تُجلب من السيرفر) =====
 let PRODUCTS = [];
 let SETTINGS = { whatsapp_order_enabled: false, shipping_fee: 50, store_phone: "" };
+let STATIC_MODE = false; // استضافة ثابتة (GitHub Pages): منتجات من snapshot + طلب واتساب
 let _storeLoaded = null;
 
 function loadStore() {
   if (_storeLoaded) return _storeLoaded;
   _storeLoaded = Promise.all([
-    fetch("/api/products").then((r) => r.json()),
-    fetch("/api/settings/public").then((r) => r.json()),
+    fetch("api/products").then((r) => r.json()),
+    fetch("api/settings/public").then((r) => r.json()),
   ])
     .then(([prodData, settings]) => {
       PRODUCTS = prodData.products || [];
       SETTINGS = { ...SETTINGS, ...settings };
     })
-    .catch(() => {
-      PRODUCTS = [];
+    .catch(async () => {
+      // لا يوجد سيرفر (استضافة ثابتة) → منتجات من الملف المُصدَّر والطلب عبر واتساب
+      STATIC_MODE = true;
+      SETTINGS = { whatsapp_order_enabled: true, shipping_fee: 50, store_phone: "201032543968" };
+      try {
+        const r = await fetch("products.json");
+        const d = await r.json();
+        PRODUCTS = d.products || [];
+        if (d.settings) SETTINGS = { ...SETTINGS, ...d.settings, whatsapp_order_enabled: true };
+      } catch {
+        PRODUCTS = [];
+      }
     });
   return _storeLoaded;
 }
@@ -457,8 +468,14 @@ async function submitOrder(e) {
   btn.disabled = true;
   btn.textContent = "جارٍ إرسال الطلب...";
 
+  // وضع الاستضافة الثابتة: لا يوجد سيرفر لحفظ الطلب → الطلب يُرسل عبر واتساب
+  if (STATIC_MODE) {
+    submitOrderViaWhatsApp(data);
+    return;
+  }
+
   try {
-    const res = await fetch("/api/orders", {
+    const res = await fetch("api/orders", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -499,6 +516,42 @@ async function submitOrder(e) {
     btn.disabled = false;
     btn.textContent = "إرسال الطلب ✓";
   }
+}
+
+// إرسال الطلب عبر واتساب (وضع الاستضافة الثابتة فقط)
+function submitOrderViaWhatsApp(formData) {
+  const detailed = cartDetailed().filter((p) => p.orderable);
+  const subtotal = detailed.reduce((s, p) => s + p.price * p.qty, 0);
+  const total = subtotal + SETTINGS.shipping_fee;
+
+  let msg = "🛍️ *طلب جديد من MY BOX STORE*\n—————————————\n";
+  msg += `👤 الاسم: ${(formData.get("name") || "").trim()}\n`;
+  msg += `📱 الموبايل: ${(formData.get("phone") || "").trim()}\n`;
+  msg += `🏙️ المحافظة: ${formData.get("city") || ""}\n`;
+  msg += `📍 العنوان: ${(formData.get("address") || "").trim()}\n`;
+  const notes = (formData.get("notes") || "").trim();
+  if (notes) msg += `🎨 التخصيص/ملاحظات: ${notes}\n`;
+  msg += "—————————————\n🛒 المنتجات:\n";
+  detailed.forEach((p, i) => {
+    msg += `${i + 1}- ${p.name} × ${p.qty} = ${formatPrice(p.price * p.qty)}\n`;
+  });
+  msg += `—————————————\nالشحن: ${formatPrice(SETTINGS.shipping_fee)}\n💰 *الإجمالي: ${formatPrice(total)}*\n💵 الدفع عند الاستلام`;
+
+  const waUrl = `https://wa.me/${SETTINGS.store_phone}?text=${encodeURIComponent(msg)}`;
+  window.open(waUrl, "_blank");
+
+  saveCart([]);
+  const wrap = document.getElementById("cartWrap");
+  wrap.innerHTML = `
+    <div class="empty-cart">
+      <div class="emoji">🎉</div>
+      <h3>خطوة أخيرة لإتمام طلبك!</h3>
+      <p>تم فتح واتساب بتفاصيل طلبك — اضغط <strong>إرسال</strong> داخل واتساب ليصلنا فوراً.<br>لو ما فتحش تلقائياً اضغط الزر:</p>
+      <a href="${waUrl}" target="_blank" class="btn btn-whatsapp" style="display:inline-flex;width:auto;margin:0 auto 14px;">💬 أرسل الطلب على واتساب</a>
+      <div><a href="products.html" class="btn btn-light" style="background:var(--bg);">مواصلة التسوق</a></div>
+    </div>`;
+  showToast("🎉 تم تجهيز طلبك — أرسله عبر واتساب");
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 // ===== قائمة الموبايل =====

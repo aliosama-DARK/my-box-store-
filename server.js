@@ -435,6 +435,24 @@ const PRODUCT_SELECT = `
   SELECT p.*, c.key AS category_key, c.name AS category_name
   FROM products p LEFT JOIN categories c ON c.id = p.category_id`;
 
+// تصدير المنتجات لملف products.json — يُستخدم كـ snapshot للاستضافة الثابتة (GitHub Pages)
+function exportProductsSnapshot() {
+  try {
+    const rows = db.prepare(`${PRODUCT_SELECT} WHERE p.is_hidden = 0 ORDER BY p.sort_order ASC, p.id ASC`).all();
+    const snapshot = {
+      generated_at: nowISO(),
+      settings: {
+        shipping_fee: Number(getSetting("shipping_fee", "50")),
+        store_phone: getSetting("store_phone", ""),
+      },
+      products: rows.map(publicProductJSON),
+    };
+    fs.writeFileSync(path.join(ROOT, "products.json"), JSON.stringify(snapshot, null, 2));
+  } catch (e) {
+    console.error("snapshot export error:", e.message);
+  }
+}
+
 // ===== API عام (بدون تسجيل دخول) =====
 function apiPublicProducts(req, res, url) {
   const cat = cleanStr(url.searchParams.get("cat") || "", 40);
@@ -782,6 +800,7 @@ function apiCreateProduct(req, res, body) {
       out.internal_notes || "", ts, ts
     );
   const row = db.prepare(`${PRODUCT_SELECT} WHERE p.id = ?`).get(Number(info.lastInsertRowid));
+  exportProductsSnapshot();
   sendJSON(res, 201, { ok: true, product: adminProductJSON(row) });
 }
 
@@ -805,6 +824,7 @@ function apiUpdateProduct(req, res, id, body) {
   params.push(nowISO(), id);
   db.prepare(`UPDATE products SET ${sets.join(", ")} WHERE id = ?`).run(...params);
   const row = db.prepare(`${PRODUCT_SELECT} WHERE p.id = ?`).get(id);
+  exportProductsSnapshot();
   sendJSON(res, 200, { ok: true, product: adminProductJSON(row) });
 }
 
@@ -813,6 +833,7 @@ function apiDeleteProduct(req, res, id) {
   if (!existing) return sendJSON(res, 404, { error: "المنتج غير موجود" });
   // عناصر الطلبات السابقة تحتفظ باسم المنتج (snapshot) فلا تتأثر بالحذف
   db.prepare("DELETE FROM products WHERE id = ?").run(id);
+  exportProductsSnapshot();
   sendJSON(res, 200, { ok: true });
 }
 
@@ -856,6 +877,7 @@ function apiUpdateSettings(req, res, body) {
     if (!/^[0-9]{10,15}$/.test(ph)) return sendJSON(res, 400, { error: "رقم واتساب المتجر غير صحيح" });
     setSetting("store_phone", ph);
   }
+  exportProductsSnapshot();
   apiGetSettings(req, res);
 }
 
@@ -1029,6 +1051,8 @@ const server = http.createServer(async (req, res) => {
     sendJSON(res, err.message === "payload too large" ? 413 : 400, { error: "طلب غير صالح" });
   }
 });
+
+exportProductsSnapshot();
 
 server.listen(PORT, () => {
   console.log("");

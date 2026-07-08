@@ -1,0 +1,161 @@
+{
+  "generated_at": "2026-07-08T14:43:43.970Z",
+  "settings": {
+    "shipping_fee": 50,
+    "store_phone": "201032543968"
+  },
+  "products": [
+    {
+      "id": 1,
+      "name": "درع زجاجي — شهادة تميز",
+      "slug": "glass-award-shield",
+      "image": "images/award-shield.png",
+      "short_description": "درع زجاجي كريستالي فاخر بقاعدة خشبية، محفور بالليزر بتصميمك.",
+      "description": "درع زجاجي كريستالي فاخر بقاعدة خشبية، محفور بالليزر بتصميمك أو شعارك أو نص خاص. الاختيار الأمثل لتكريم الموظفين، حفلات التخرج، المسابقات، والمناسبات الرسمية. تصميم راقٍ يعكس قيمة التكريم.",
+      "details": [
+        [
+          "الخامة",
+          "زجاج كريستال + قاعدة خشب طبيعي"
+        ],
+        [
+          "المقاس",
+          "حوالي 20 × 15 سم"
+        ],
+        [
+          "التخصيص",
+          "نقش الاسم / الشعار / النص + لوحة ذهبية"
+        ],
+        [
+          "مدة التنفيذ",
+          "2 – 4 أيام عمل"
+        ]
+      ],
+      "category_key": "awards",
+      "category_name": "دروع وتذكارات",
+      "regular_price": 450,
+      "sale_price": 350,
+      "price": 350,
+      "offer_active": true,
+      "discount_percent": 22,
+      "stock_status": "in_stock",
+      "product_status": "available",
+      "is_featured": true,
+      "orderable": true,
+      "availability_label": ""
+    },
+    {
+      "id": 2,
+      "name": "شهادة تقدير بإطار خشبي",
+      "slug": "certificate-wooden-frame",
+      "image": "images/certificate-frame.png",
+      "short_description": "شهادة تقدير مطبوعة بجودة عالية داخل إطار خشبي أنيق.",
+      "description": "شهادة تقدير مطبوعة بجودة عالية داخل إطار خشبي أنيق بحواف ذهبية وختم مميز. مناسبة للتكريم والإهداء في المناسبات الرسمية والمدارس والشركات. تُسلَّم جاهزة للعرض أو الإهداء.",
+      "details": [
+        [
+          "الخامة",
+          "ورق فاخر + إطار خشبي"
+        ],
+        [
+          "المقاس",
+          "A4 مع الإطار"
+        ],
+        [
+          "التخصيص",
+          "الاسم / النص / المناسبة / الشعار"
+        ],
+        [
+          "مدة التنفيذ",
+          "1 – 3 أيام عمل"
+        ]
+      ],
+      "category_key": "certificates",
+      "category_name": "شهادات",
+      "regular_price": 220,
+      "sale_price": null,
+      "price": 220,
+      "offer_active": false,
+      "discount_percent": 0,
+      "stock_status": "in_stock",
+      "product_status": "available",
+      "is_featured": false,
+      "orderable": true,
+      "availability_label": ""
+    },
+    {
+      "id": 3,
+      "name": "تيشيرت مطبوع مخصص",
+      "slug": "custom-printed-tshirt",
+      "image": "images/tshirt-print.png",
+      "short_description": "تيشيرت قطن عالي الجودة بطباعة احترافية ثابتة لا تبهت.",
+      "description": "تيشيرت قطن عالي الجودة بطباعة احترافية ثابتة لا تبهت مع الغسيل. اطبع تصميمك أو اسمك أو شعارك على الأمام والخلف. متوفر بكل المقاسات وعدة ألوان. مثالي للفرق والشركات والمناسبات.",
+      "details": [
+        [
+          "الخامة",
+          "قطن 100%"
+        ],
+        [
+          "المقاسات",
+          "S / M / L / XL / XXL"
+        ],
+        [
+          "التخصيص",
+          "طباعة أمامية وخلفية بتصميمك"
+        ],
+        [
+          "مدة التنفيذ",
+          "2 – 4 أيام عمل"
+        ]
+      ],
+      "category_key": "prints",
+      "category_name": "مطبوعات",
+      "regular_price": 320,
+      "sale_price": 250,
+      "price": 250,
+      "offer_active": true,
+      "discount_percent": 22,
+      "stock_status": "in_stock",
+      "product_status": "available",
+      "is_featured": false,
+      "orderable": true,
+      "availability_label": ""
+    },
+    {
+      "id": 4,
+      "name": "مج مطبوع مخصص",
+      "slug": "custom-printed-mug",
+      "image": "images/mug-print.png",
+      "short_description": "مج سيراميك بطباعة بانورامية عالية الجودة بصورتك أو تصميمك.",
+      "description": "مج سيراميك بطباعة بانورامية عالية الجودة. اطبع صورتك أو اسمك أو أي تصميم تحبه — هدية مميزة وعملية لكل المناسبات وأعياد الميلاد. ألوان ثابتة وجودة طباعة ممتازة.",
+      "details": [
+        [
+          "الخامة",
+          "سيراميك عالي الجودة"
+        ],
+        [
+          "السعة",
+          "330 مل"
+        ],
+        [
+          "التخصيص",
+          "طباعة بانورامية بصورتك / تصميمك"
+        ],
+        [
+          "مدة التنفيذ",
+          "1 – 3 أيام عمل"
+        ]
+      ],
+      "category_key": "prints",
+      "category_name": "مطبوعات",
+      "regular_price": 160,
+      "sale_price": 120,
+      "price": 120,
+      "offer_active": true,
+      "discount_percent": 25,
+      "stock_status": "in_stock",
+      "product_status": "available",
+      "is_featured": false,
+      "orderable": true,
+      "availability_label": ""
+    }
+  ]
+}
