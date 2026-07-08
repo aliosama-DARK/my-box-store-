@@ -1,208 +1,160 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Box Store | هداياك بكل حب</title>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
-    
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
-    <script type="text/javascript">
-       (function(){
-          emailjs.init("-I-pY1UXrpFHj2Voh"); 
-       })();
-    </script>
-
-    <style>
-        :root {
-            --primary: #6c5ce7;
-            --secondary: #a29bfe;
-            --accent: #fd79a8;
-            --dark: #2d3436;
-            --bg: #f9f9fb;
-        }
-
-        body { 
-            font-family: 'Cairo', sans-serif; 
-            background-color: var(--bg); 
-            margin: 0; color: var(--dark);
-        }
-
-        header { 
-            background: white; 
-            padding: 30px 20px; 
-            text-align: center; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-            border-bottom-left-radius: 40px;
-            border-bottom-right-radius: 40px;
-        }
-
-        .main-logo {
-            width: 120px;
-            height: auto;
-            border-radius: 25px;
-            animation: floating 3s ease-in-out infinite;
-        }
-
-        @keyframes floating {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
-        }
-
-        header h1 { 
-            font-size: 2rem; 
-            font-weight: 900;
-            background: linear-gradient(45deg, var(--primary), var(--accent));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin: 10px 0;
-        }
-
-        .container { max-width: 1000px; margin: 30px auto; padding: 0 20px; }
-
-        .grid { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); 
-            gap: 25px; 
-        }
-
-        .card { 
-            background: white; 
-            padding: 20px; 
-            border-radius: 30px; 
-            text-align: center; 
-            box-shadow: 0 10px 20px rgba(0,0,0,0.03);
-            transition: 0.3s;
-        }
-
-        .card:hover { transform: translateY(-10px); box-shadow: 0 20px 40px rgba(108, 92, 231, 0.1); }
-
-        .card img { 
-            width: 100%; height: 200px; 
-            object-fit: cover; 
-            border-radius: 20px; 
-            margin-bottom: 15px;
-        }
-
-        .btn { 
-            background: linear-gradient(135deg, var(--secondary), var(--primary)); 
-            color: white; border: none; padding: 12px; 
-            border-radius: 18px; cursor: pointer; width: 100%; 
-            font-weight: 700; font-size: 1rem;
-        }
-
-        #order-form { 
-            display: none; background: white; padding: 35px; 
-            border-radius: 35px; box-shadow: 0 20px 50px rgba(0,0,0,0.1);
-        }
-
-        input, select, textarea { 
-            width: 100%; padding: 15px; margin: 10px 0; 
-            border: 2px solid #f1f1f1; border-radius: 15px; font-family: 'Cairo';
-        }
-
-        .submit-btn { 
-            background: #00b894; color: white; width: 100%; 
-            padding: 18px; border: none; border-radius: 15px; 
-            font-weight: 800; cursor: pointer;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MY BOX STORE — طباعة وهدايا مخصصة</title>
+  <meta name="description" content="MY BOX STORE — متجر الطباعة والهدايا المخصصة: دروع وتذكارات، شهادات، تيشيرتات ومجات مطبوعة بتصميمك الخاص." />
+  <link rel="icon" href="images/logo.jpeg" />
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
 
-<header>
-    <img src="logo.jpg" alt="Logo" class="main-logo">
-    <h1>My Box Store</h1>
-    <p style="color: #636e72;">نطبع مشاعرك على هداياك بكل حب ❤️</p>
-</header>
-
-<div class="container">
-    <div id="main-grid" class="grid animate__animated animate__fadeIn">
-        <!-- تيشرتات -->
-        <div class="card">
-            <img src="Gemini_Generated_Image_wmmh7rwmmh7rwmmh.png">
-            <h3>تيشرتات قطن</h3>
-            <button class="btn" onclick="openForm('تيشرت قطن', true)">تخصيص الآن ✨</button>
-        </div>
-        <!-- مجات -->
-        <div class="card">
-            <img src="mug.png">
-            <h3>مجات حرارية</h3>
-            <button class="btn" onclick="openForm('مج حراري', false)">اطلب الآن ✨</button>
-        </div>
-        <!-- دروع -->
-        <div class="card">
-            <img src="shield.png">
-            <h3>دروع كريستال</h3>
-            <button class="btn" onclick="openForm('درع كريستال', false)">تخليد ذكرى ✨</button>
-        </div>
-        <!-- الشهادة عادت هنا -->
-        <div class="card">
-            <img src="cert.png">
-            <h3>شهادات تقدير</h3>
-            <button class="btn" onclick="openForm('شهادة تقدير', false)">تجهيز الشهادة ✨</button>
-        </div>
+  <!-- الهيدر -->
+  <header class="header">
+    <div class="container header-inner">
+      <a href="index.html" class="logo">
+        <img src="images/logo.jpeg" alt="MY BOX STORE" />
+        <span class="logo-text">MY BOX STORE<small>PRINTING & GIFTS</small></span>
+      </a>
+      <nav class="nav">
+        <a href="index.html" class="active">الرئيسية</a>
+        <a href="products.html">المنتجات</a>
+        <a href="#categories">الفئات</a>
+        <a href="#contact">تواصل معنا</a>
+      </nav>
+      <div class="header-actions">
+        <a href="cart.html" class="cart-btn">
+          <span>🛒</span>
+          <span class="label">السلة</span>
+          <span class="cart-count">0</span>
+        </a>
+        <button class="menu-toggle" onclick="toggleMenu()">☰</button>
+      </div>
     </div>
+  </header>
 
-    <!-- نموذج الطلب -->
-    <div id="order-form" class="animate__animated animate__zoomIn">
-        <h2 id="form-title" style="text-align:center; color: var(--primary);"></h2>
-        <form id="contact-form">
-            <input type="text" id="cust_name" placeholder="الاسم بالكامل" required>
-            <input type="tel" id="cust_phone" placeholder="رقم الواتساب" required>
-            <div id="s-div" style="display:none;">
-                <select id="cust_size">
-                    <option value="M">Medium</option>
-                    <option value="L">Large</option>
-                    <option value="XL">X-Large</option>
-                </select>
-            </div>
-            <input type="text" id="cust_color" placeholder="اللون المطلوب">
-            <textarea id="cust_notes" rows="4" placeholder="اكتب ملاحظاتك هنا..."></textarea>
-            <button type="submit" class="submit-btn" id="s-btn">إرسال الطلب 🚀</button>
-            <p onclick="location.reload()" style="text-align:center; cursor:pointer; color:var(--primary); margin-top:15px;">← العودة للمتجر</p>
-        </form>
+  <!-- الهيرو -->
+  <section class="hero">
+    <div class="container hero-inner">
+      <div>
+        <h1>اطبع لمستك الخاصة<br />على كل هدية مميزة</h1>
+        <p>MY BOX STORE متخصصون في الطباعة والهدايا المخصصة — دروع وتذكارات، شهادات، تيشيرتات ومجات بتصميمك واسمك. جودة عالية وتسليم سريع.</p>
+        <a href="products.html" class="btn btn-light">اطلب منتجك الآن ←</a>
+      </div>
+      <div class="hero-art">
+        <div class="hero-card">🏆<span>دروع وتذكارات</span></div>
+        <div class="hero-card">📜<span>شهادات</span></div>
+        <div class="hero-card">👕<span>تيشيرتات</span></div>
+        <div class="hero-card">☕<span>مجات</span></div>
+      </div>
     </div>
-</div>
+  </section>
 
-<script>
-    let currentProduct = "";
-    function openForm(p, s) {
-        currentProduct = p;
-        document.getElementById('main-grid').style.display = 'none';
-        document.getElementById('order-form').style.display = 'block';
-        document.getElementById('form-title').innerText = "طلب " + p;
-        document.getElementById('s-div').style.display = s ? 'block' : 'none';
-        window.scrollTo({top: 0, behavior: 'smooth'});
-    }
+  <!-- الفئات -->
+  <section id="categories">
+    <div class="container">
+      <h2 class="section-title">تسوّق حسب الفئة</h2>
+      <p class="section-sub">اختار نوع المنتج اللي محتاج تطبع عليه تصميمك</p>
+      <div class="categories">
+        <a href="products.html?cat=awards" class="category-card">
+          <div class="emoji">🏆</div>
+          <h3>دروع وتذكارات</h3>
+          <p>دروع زجاجية محفورة بالليزر</p>
+        </a>
+        <a href="products.html?cat=certificates" class="category-card">
+          <div class="emoji">📜</div>
+          <h3>شهادات</h3>
+          <p>شهادات تقدير بإطارات فاخرة</p>
+        </a>
+        <a href="products.html?cat=prints" class="category-card">
+          <div class="emoji">👕</div>
+          <h3>مطبوعات</h3>
+          <p>تيشيرتات ومجات بتصميمك</p>
+        </a>
+        <a href="products.html" class="category-card">
+          <div class="emoji">✨</div>
+          <h3>كل المنتجات</h3>
+          <p>تصفّح التشكيلة كاملة</p>
+        </a>
+      </div>
+    </div>
+  </section>
 
-    document.getElementById('contact-form').onsubmit = function(e) {
-        e.preventDefault();
-        const btn = document.getElementById('s-btn');
-        btn.innerText = "جاري الإرسال...";
-        btn.disabled = true;
+  <!-- منتجات مميزة -->
+  <section style="padding-top:0;">
+    <div class="container">
+      <h2 class="section-title">منتجاتنا</h2>
+      <p class="section-sub">منتجات قابلة للتخصيص بالكامل بتصميمك واسمك</p>
+      <div class="products-grid" id="productsGrid"></div>
+      <div style="text-align:center;margin-top:36px;">
+        <a href="products.html" class="btn btn-primary">عرض كل المنتجات</a>
+      </div>
+    </div>
+  </section>
 
-        const templateParams = {
-            name: document.getElementById('cust_name').value,
-            prod: currentProduct,
-            phone: document.getElementById('cust_phone').value,
-            size: currentProduct === 'تيشرت قطن' ? document.getElementById('cust_size').value : "N/A",
-            color: document.getElementById('cust_color').value || "حسب الاختيار",
-            notes: document.getElementById('cust_notes').value || "لا يوجد",
-            time: new Date().toLocaleString('ar-EG')
-        };
+  <!-- المميزات -->
+  <section class="features">
+    <div class="container features-grid">
+      <div class="feature"><div class="emoji">🎨</div><h4>تصميم مخصص</h4><p>اطبع اسمك أو شعارك أو أي تصميم</p></div>
+      <div class="feature"><div class="emoji">🚚</div><h4>توصيل سريع</h4><p>لكل المحافظات خلال 2-4 أيام</p></div>
+      <div class="feature"><div class="emoji">💵</div><h4>الدفع عند الاستلام</h4><p>ادفع بعد ما توصلك الطلبية</p></div>
+      <div class="feature"><div class="emoji">⭐</div><h4>جودة مضمونة</h4><p>خامات وطباعة بأعلى جودة</p></div>
+    </div>
+  </section>
 
-        emailjs.send("service_irixc5m", "template_9psshpd", templateParams)
-        .then(() => {
-            alert("تم استلام طلبك بنجاح!");
-            location.reload();
-        }, (err) => {
-            alert("حدث خطأ.. حاول مرة أخرى");
-            btn.disabled = false;
-        });
-    };
-</script>
+  <!-- الفوتر -->
+  <footer class="footer" id="contact">
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <div class="logo">
+            <img src="images/logo.jpeg" alt="MY BOX STORE" />
+            <span class="logo-text">MY BOX STORE<small>PRINTING & GIFTS</small></span>
+          </div>
+          <p>متجرك المتخصص في الطباعة والهدايا المخصصة. نطبع لك تصميمك على الدروع والشهادات والتيشيرتات والمجات بأعلى جودة. Since 2026.</p>
+          <div class="social">
+            <a href="https://www.facebook.com/profile.php?id=61563896937276" target="_blank" title="فيسبوك">📘</a>
+            <a href="#" title="إنستجرام">📷</a>
+            <a href="https://wa.me/201032543968" title="واتساب">💬</a>
+            <a href="#" title="تيك توك">🎵</a>
+          </div>
+        </div>
+        <div>
+          <h4>روابط سريعة</h4>
+          <ul>
+            <li><a href="index.html">الرئيسية</a></li>
+            <li><a href="products.html">المنتجات</a></li>
+            <li><a href="cart.html">السلة</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4>الفئات</h4>
+          <ul>
+            <li><a href="products.html?cat=awards">دروع وتذكارات</a></li>
+            <li><a href="products.html?cat=certificates">شهادات</a></li>
+            <li><a href="products.html?cat=prints">مطبوعات</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4>تواصل معنا</h4>
+          <ul>
+            <li>📞 01032543968</li>
+            <li><a href="https://wa.me/201032543968" target="_blank">💬 واتساب</a></li>
+            <li><a href="https://www.facebook.com/profile.php?id=61563896937276" target="_blank">📘 فيسبوك</a></li>
+            <li>📍 مصر</li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        © 2026 MY BOX STORE — Printing & Gifts. جميع الحقوق محفوظة.
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+  <script>
+    renderProducts("all", "productsGrid", 8);
+  </script>
 </body>
 </html>

@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>لوحة التحكم — MY BOX STORE</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" href="../images/logo.jpeg" />
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+
+  <!-- شريط علوي للموبايل -->
+  <div class="mobile-topnav">
+    <div class="brand">
+      <img src="../images/logo.jpeg" alt="MY BOX STORE" />
+      <span>لوحة التحكم</span>
+    </div>
+    <div class="tabs">
+      <button class="tab-btn active" data-view="overview">📊</button>
+      <button class="tab-btn" data-view="orders">📦</button>
+      <button class="tab-btn" data-view="products">🛒</button>
+      <button class="tab-btn" data-view="settings">⚙️</button>
+      <button class="tab-btn" onclick="logout()">🚪</button>
+    </div>
+  </div>
+
+  <div class="dash">
+    <!-- القائمة الجانبية -->
+    <aside class="sidebar">
+      <div class="brand">
+        <img src="../images/logo.jpeg" alt="MY BOX STORE" />
+        <div>
+          <strong>MY BOX STORE</strong>
+          <small>لوحة التحكم</small>
+        </div>
+      </div>
+      <button class="side-link active" data-view="overview">📊 <span>نظرة عامة</span></button>
+      <button class="side-link" data-view="orders">📦 <span>إدارة الطلبات</span></button>
+      <button class="side-link" data-view="products">🛒 <span>إدارة المنتجات</span></button>
+      <button class="side-link" data-view="settings">⚙️ <span>الإعدادات</span></button>
+      <a class="side-link" href="../index.html" target="_blank">🛍️ <span>عرض المتجر</span></a>
+      <div class="spacer"></div>
+      <button class="side-link logout" onclick="logout()">🚪 <span>تسجيل الخروج</span></button>
+    </aside>
+
+    <!-- المحتوى -->
+    <main class="main">
+
+      <!-- ===== نظرة عامة ===== -->
+      <section id="view-overview">
+        <div class="topbar">
+          <div>
+            <h1>نظرة عامة</h1>
+            <div class="hint">ملخص سريع للطلبات والمنتجات</div>
+          </div>
+          <button class="refresh-btn" onclick="loadOverview()">⟳ تحديث</button>
+        </div>
+
+        <h2 class="group-label">الطلبات</h2>
+        <div class="stats-grid" id="orderStatsGrid">
+          <div class="loading-state">جارٍ التحميل...</div>
+        </div>
+
+        <h2 class="group-label">المنتجات</h2>
+        <div class="stats-grid" id="productStatsGrid"></div>
+
+        <div class="panel">
+          <h2 class="panel-title">
+            آخر الطلبات المضافة
+            <button class="more" onclick="switchView('orders')">عرض كل الطلبات ←</button>
+          </h2>
+          <div class="table-wrap" id="recentWrap">
+            <div class="loading-state">جارٍ التحميل...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== إدارة الطلبات ===== -->
+      <section id="view-orders" style="display:none;">
+        <div class="topbar">
+          <div>
+            <h1>إدارة الطلبات</h1>
+            <div class="hint">بحث، فلترة، تحديث حالة، وتواصل واتساب</div>
+          </div>
+          <button class="refresh-btn" onclick="loadOrders()">⟳ تحديث</button>
+        </div>
+
+        <div class="panel">
+          <div class="filters">
+            <input type="search" id="fSearch" placeholder="🔍 بحث بالاسم / الهاتف / رقم الطلب..." />
+            <select id="fStatus">
+              <option value="">كل الحالات</option>
+              <option value="new">جديد</option>
+              <option value="contacted">تم التواصل</option>
+              <option value="pending_confirmation">في انتظار التأكيد</option>
+              <option value="in_progress">قيد التنفيذ</option>
+              <option value="prepared">تم التجهيز</option>
+              <option value="delivered">تم التسليم</option>
+              <option value="completed">مكتمل</option>
+              <option value="cancelled">ملغي</option>
+            </select>
+            <input type="date" id="fFrom" title="من تاريخ" />
+            <input type="date" id="fTo" title="إلى تاريخ" />
+            <button class="clear-btn" onclick="clearFilters()">✕ مسح</button>
+          </div>
+
+          <div class="table-wrap" id="ordersWrap">
+            <div class="loading-state">جارٍ التحميل...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== إدارة المنتجات ===== -->
+      <section id="view-products" style="display:none;">
+        <div class="topbar">
+          <div>
+            <h1>إدارة المنتجات</h1>
+            <div class="hint">إضافة، تعديل، إخفاء، عروض وأسعار</div>
+          </div>
+          <div style="display:flex;gap:10px;">
+            <button class="refresh-btn" onclick="loadProducts()">⟳ تحديث</button>
+            <button class="btn btn-primary add-product-btn" onclick="openProductForm(null)">➕ إضافة منتج</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="filters filters-products">
+            <input type="search" id="pSearch" placeholder="🔍 بحث باسم المنتج..." />
+            <select id="pCat">
+              <option value="">كل التصنيفات</option>
+            </select>
+            <select id="pFilter">
+              <option value="">كل المنتجات</option>
+              <option value="available">✅ متاح</option>
+              <option value="unavailable">🚫 غير متاح حاليًا</option>
+              <option value="out_of_stock">📭 نفدت الكمية</option>
+              <option value="hidden">🙈 مخفي مؤقتًا</option>
+              <option value="offer">🔥 عليه عرض</option>
+              <option value="featured">⭐ مميز</option>
+            </select>
+            <button class="clear-btn" onclick="clearProductFilters()">✕ مسح</button>
+          </div>
+
+          <div class="table-wrap" id="productsWrap">
+            <div class="loading-state">جارٍ التحميل...</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== الإعدادات ===== -->
+      <section id="view-settings" style="display:none;">
+        <div class="topbar">
+          <div>
+            <h1>الإعدادات</h1>
+            <div class="hint">إعدادات المتجر وطرق الطلب</div>
+          </div>
+        </div>
+
+        <div class="panel" style="max-width:560px;">
+          <h2 class="panel-title">طريقة الطلب</h2>
+
+          <label class="toggle-row">
+            <span>
+              <strong>الطلب عبر واتساب (اختياري للعميل)</strong>
+              <small>عند التفعيل يظهر زر واتساب كخيار إضافي فقط — الطلب الأساسي دائماً من الموقع. عند الإيقاف يختفي الزر نهائيًا.</small>
+            </span>
+            <span class="switch">
+              <input type="checkbox" id="setWaEnabled">
+              <span class="slider"></span>
+            </span>
+          </label>
+
+          <div class="form-group" style="margin-top:18px;">
+            <label>مصاريف الشحن (ج.م)</label>
+            <input type="number" id="setShipping" min="0" step="1">
+          </div>
+
+          <div class="form-group">
+            <label>رقم واتساب المتجر (بصيغة دولية مثل 201032543968)</label>
+            <input type="tel" id="setStorePhone" dir="ltr">
+          </div>
+
+          <button class="btn btn-primary" style="width:auto;" onclick="saveSettings()">💾 حفظ الإعدادات</button>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- نافذة تفاصيل الطلب -->
+  <div class="modal-overlay" id="orderModal">
+    <div class="modal">
+      <div class="modal-head">
+        <h2 id="modalTitle">تفاصيل الطلب</h2>
+        <button class="modal-close" onclick="closeModal('orderModal')">✕</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <!-- نافذة إضافة / تعديل منتج -->
+  <div class="modal-overlay" id="productModal">
+    <div class="modal modal-lg">
+      <div class="modal-head">
+        <h2 id="productModalTitle">إضافة منتج</h2>
+        <button class="modal-close" onclick="closeModal('productModal')">✕</button>
+      </div>
+      <div class="modal-body" id="productModalBody"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="admin.js"></script>
+</body>
+</html>

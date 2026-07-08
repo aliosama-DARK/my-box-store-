@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>تفاصيل المنتج — MY BOX STORE</title>
+  <meta name="description" content="تفاصيل منتج MY BOX STORE — طباعة وهدايا مخصصة." />
+  <link rel="icon" href="images/logo.jpeg" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- الهيدر -->
+  <header class="header">
+    <div class="container header-inner">
+      <a href="index.html" class="logo">
+        <img src="images/logo.jpeg" alt="MY BOX STORE" />
+        <span class="logo-text">MY BOX STORE<small>PRINTING & GIFTS</small></span>
+      </a>
+      <nav class="nav">
+        <a href="index.html">الرئيسية</a>
+        <a href="products.html">المنتجات</a>
+        <a href="index.html#categories">الفئات</a>
+        <a href="index.html#contact">تواصل معنا</a>
+      </nav>
+      <div class="header-actions">
+        <a href="cart.html" class="cart-btn">
+          <span>🛒</span>
+          <span class="label">السلة</span>
+          <span class="cart-count">0</span>
+        </a>
+        <button class="menu-toggle" onclick="toggleMenu()">☰</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- تفاصيل المنتج -->
+  <section style="padding-top:36px;">
+    <div class="container">
+      <div id="productDetail"></div>
+    </div>
+  </section>
+
+  <!-- منتجات أخرى -->
+  <section style="padding-top:0;">
+    <div class="container">
+      <h2 class="section-title">منتجات أخرى</h2>
+      <div class="products-grid" id="relatedGrid"></div>
+    </div>
+  </section>
+
+  <!-- الفوتر -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <div class="logo">
+            <img src="images/logo.jpeg" alt="MY BOX STORE" />
+            <span class="logo-text">MY BOX STORE<small>PRINTING & GIFTS</small></span>
+          </div>
+          <p>متجرك المتخصص في الطباعة والهدايا المخصصة. نطبع لك تصميمك على الدروع والشهادات والتيشيرتات والمجات بأعلى جودة. Since 2026.</p>
+          <div class="social">
+            <a href="https://www.facebook.com/profile.php?id=61563896937276" target="_blank" title="فيسبوك">📘</a>
+            <a href="#" title="إنستجرام">📷</a>
+            <a href="https://wa.me/201032543968" target="_blank" title="واتساب">💬</a>
+            <a href="#" title="تيك توك">🎵</a>
+          </div>
+        </div>
+        <div>
+          <h4>روابط سريعة</h4>
+          <ul>
+            <li><a href="index.html">الرئيسية</a></li>
+            <li><a href="products.html">المنتجات</a></li>
+            <li><a href="cart.html">السلة</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4>الفئات</h4>
+          <ul>
+            <li><a href="products.html?cat=awards">دروع وتذكارات</a></li>
+            <li><a href="products.html?cat=certificates">شهادات</a></li>
+            <li><a href="products.html?cat=prints">مطبوعات</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4>تواصل معنا</h4>
+          <ul>
+            <li>📞 01032543968</li>
+            <li><a href="https://wa.me/201032543968" target="_blank">💬 واتساب</a></li>
+            <li><a href="https://www.facebook.com/profile.php?id=61563896937276" target="_blank">📘 فيسبوك</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        © 2026 MY BOX STORE — Printing & Gifts. جميع الحقوق محفوظة.
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+  <script>
+    renderProductDetail();
+    renderRelated("relatedGrid");
+  </script>
+</body>
+</html>

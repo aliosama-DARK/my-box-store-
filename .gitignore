@@ -1,0 +1,21 @@
+# قاعدة البيانات — بيانات العملاء وكلمات السر لا تُرفع أبداً
+data/
+
+# صور مرفوعة من لوحة التحكم (خاصة بكل بيئة تشغيل)
+images/uploads/
+
+# مشاريع أخرى في نفس المجلد (ليست جزءاً من المتجر)
+GAME/
+godot/
+gravity/
+shooter/
+itch_assets/
+PlayGodot.bat
+PlayGravity.bat
+PlayShooter.bat
+ChatGPT Image*.png
+
+# نظام التشغيل
+Thumbs.db
+desktop.ini
+node_modules/
