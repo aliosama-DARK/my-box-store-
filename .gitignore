@@ -4,6 +4,9 @@ data/
 # صور مرفوعة من لوحة التحكم (خاصة بكل بيئة تشغيل)
 images/uploads/
 
+# صور العملاء المرفقة بالطلبات (بيانات خاصة — لا تُرفع أبداً)
+images/order_uploads/
+
 # مشاريع أخرى في نفس المجلد (ليست جزءاً من المتجر)
 GAME/
 godot/
@@ -19,3 +22,22 @@ ChatGPT Image*.png
 Thumbs.db
 desktop.ini
 node_modules/
+
+# أسرار البيئة — لا تُرفع أبداً
+.env
+.env.*
+!.env.example
+
+# مخرجات النشر والبناء
+.vercel
+.next
+dist
+
+# توكن Vercel المحلي (لا يُرفع أبداً)
+.vercel-token
+
+.vercel
+.env*
+
+# بيانات دخول الأدمن المحلية (لا تُرفع)
+ADMIN_CREDENTIALS.txt

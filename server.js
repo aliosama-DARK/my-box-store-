@@ -21,18 +21,27 @@ const ADMIN_USERNAME = "admin";
 const DEFAULT_PASSWORD = "MyBox@2026";
 
 const ORDER_STATUSES = [
-  "new",                  // جديد
-  "contacted",            // تم التواصل
-  "pending_confirmation", // في انتظار التأكيد
-  "in_progress",          // قيد التنفيذ
-  "prepared",             // تم التجهيز
-  "delivered",            // تم التسليم
-  "completed",            // مكتمل
-  "cancelled",            // ملغي
+  "new",                   // جديد
+  "under_review",          // قيد المراجعة
+  "awaiting_confirmation", // في انتظار تأكيد العميل
+  "design_confirmed",      // تم تأكيد التصميم
+  "in_production",         // قيد التنفيذ
+  "ready",                 // تم التجهيز
+  "shipped",               // تم الشحن
+  "completed",             // مكتمل
+  "cancelled",             // ملغي
+  // حالات قديمة مقبولة للتوافق مع بيانات سابقة
+  "contacted", "pending_confirmation", "in_progress", "prepared", "delivered",
 ];
-const FOLLOWING_STATUSES = ["contacted", "pending_confirmation", "in_progress", "prepared", "delivered"];
+const FOLLOWING_STATUSES = [
+  "under_review", "awaiting_confirmation", "design_confirmed", "in_production", "ready", "shipped",
+  "contacted", "pending_confirmation", "in_progress", "prepared", "delivered",
+];
 const PRODUCT_STATUSES = ["available", "unavailable"];
 const STOCK_STATUSES = ["in_stock", "out_of_stock"];
+
+const ORDER_UPLOADS_DIR = path.join(ROOT, "images", "order_uploads");
+const MAX_ORDER_IMAGES = 10;
 
 // ===== قاعدة البيانات =====
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -181,9 +190,19 @@ db.exec(`
     total_price  REAL NOT NULL,
     created_at   TEXT NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS order_images (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_id   INTEGER NOT NULL,
+    path       TEXT NOT NULL,
+    orig_name  TEXT,
+    mime       TEXT,
+    size       INTEGER,
+    created_at TEXT NOT NULL
+  );
   CREATE INDEX IF NOT EXISTS idx_orders_status   ON orders(status);
   CREATE INDEX IF NOT EXISTS idx_orders_created  ON orders(created_at);
   CREATE INDEX IF NOT EXISTS idx_items_order     ON order_items(order_id);
+  CREATE INDEX IF NOT EXISTS idx_images_order    ON order_images(order_id);
   CREATE INDEX IF NOT EXISTS idx_products_cat    ON products(category_id);
 `);
 
@@ -384,6 +403,42 @@ function slugify(name, id) {
   return s || `product-${id || Date.now()}`;
 }
 
+// فحص وحفظ صورة data-URL بأمان (نوع/حجم حقيقيان + اسم عشوائي)
+const IMG_EXT = { png: "png", jpeg: "jpg", jpg: "jpg", webp: "webp" };
+function decodeImageDataURL(dataURL, maxBytes = 6 * 1024 * 1024) {
+  if (typeof dataURL !== "string") return null;
+  const m = dataURL.match(/^data:image\/(png|jpe?g|webp);base64,([A-Za-z0-9+/=]+)$/);
+  if (!m) return null;
+  const ext = IMG_EXT[m[1] === "jpeg" ? "jpg" : m[1]] || "jpg";
+  const buf = Buffer.from(m[2], "base64");
+  if (!buf.length || buf.length > maxBytes) return null;
+  // تحقق من التوقيع الفعلي للملف (magic bytes) لا الامتداد فقط
+  const isPNG = buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47;
+  const isJPG = buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
+  const isWEBP = buf.slice(0, 4).toString("ascii") === "RIFF" && buf.slice(8, 12).toString("ascii") === "WEBP";
+  if (!isPNG && !isJPG && !isWEBP) return null;
+  return { buf, ext, mime: `image/${ext === "jpg" ? "jpeg" : ext}` };
+}
+function saveOrderImages(orderId, images, ts) {
+  if (!Array.isArray(images) || !images.length) return 0;
+  if (!fs.existsSync(ORDER_UPLOADS_DIR)) fs.mkdirSync(ORDER_UPLOADS_DIR, { recursive: true });
+  const ins = db.prepare(`
+    INSERT INTO order_images (order_id, path, orig_name, mime, size, created_at)
+    VALUES (?, ?, ?, ?, ?, ?)`);
+  let saved = 0;
+  for (const item of images.slice(0, MAX_ORDER_IMAGES)) {
+    const dataURL = typeof item === "string" ? item : item && item.data;
+    const origName = cleanStr((item && item.name) || "", 120) || null;
+    const dec = decodeImageDataURL(dataURL);
+    if (!dec) continue;
+    const fileName = `o${orderId}_${Date.now()}_${crypto.randomBytes(5).toString("hex")}.${dec.ext}`;
+    fs.writeFileSync(path.join(ORDER_UPLOADS_DIR, fileName), dec.buf);
+    ins.run(orderId, `images/order_uploads/${fileName}`, origName, dec.mime, dec.buf.length, ts);
+    saved++;
+  }
+  return saved;
+}
+
 // ===== منطق العروض والتوفر =====
 function offerActive(p) {
   if (!p.has_offer || !p.sale_price || Number(p.sale_price) <= 0) return false;
@@ -490,7 +545,7 @@ function apiCreateOrder(req, res, body) {
   const email = cleanStr(body.email, 160);
   const city = cleanStr(body.city, 80);
   const address = cleanStr(body.address, 500);
-  const customer_notes = cleanStr(body.customer_notes, 1000);
+  const customer_notes = cleanStr(body.customer_notes, 2000);
 
   if (!customer_name || customer_name.length < 2) return sendJSON(res, 400, { error: "الاسم مطلوب" });
   if (!/^[0-9]{10,15}$/.test(phone)) return sendJSON(res, 400, { error: "رقم الهاتف غير صحيح" });
@@ -544,8 +599,10 @@ function apiCreateOrder(req, res, body) {
           .run(Math.max(0, remaining), remaining <= 0 ? "out_of_stock" : "in_stock", ts, it.product.id);
       }
     }
+    // حفظ الصور المرجعية المرفقة بالطلب (تُفحص وتُخزَّن بأمان)
+    const imagesSaved = saveOrderImages(orderId, body.images, ts);
     db.exec("COMMIT");
-    sendJSON(res, 201, { ok: true, id: orderId, order_number: orderNumber, total_price, shipping });
+    sendJSON(res, 201, { ok: true, id: orderId, order_number: orderNumber, total_price, shipping, images_saved: imagesSaved });
   } catch (e) {
     console.error("order create error:", e.message);
     try { db.exec("ROLLBACK"); } catch {}
@@ -588,10 +645,14 @@ function attachItemsSummary(orderRows) {
   const items = db.prepare(`SELECT * FROM order_items WHERE order_id IN (${marks})`).all(...ids);
   const byOrder = {};
   for (const it of items) (byOrder[it.order_id] = byOrder[it.order_id] || []).push(it);
+  const imgCounts = db.prepare(`SELECT order_id, COUNT(*) AS c FROM order_images WHERE order_id IN (${marks}) GROUP BY order_id`).all(...ids);
+  const countByOrder = {};
+  for (const r of imgCounts) countByOrder[r.order_id] = r.c;
   for (const o of orderRows) {
     const list = byOrder[o.id] || [];
     o.items = list;
     o.products_summary = list.map((it) => `${it.product_name} × ${it.quantity}`).join("، ");
+    o.images_count = countByOrder[o.id] || 0;
   }
 }
 
@@ -639,6 +700,7 @@ function apiGetOrder(req, res, id) {
   const row = db.prepare("SELECT * FROM orders WHERE id = ?").get(id);
   if (!row) return sendJSON(res, 404, { error: "الطلب غير موجود" });
   attachItemsSummary([row]);
+  row.images = db.prepare("SELECT id, path, orig_name, mime, size FROM order_images WHERE order_id = ? ORDER BY id ASC").all(id);
   sendJSON(res, 200, { order: row });
 }
 
@@ -668,6 +730,12 @@ function apiUpdateOrder(req, res, id, body) {
 function apiDeleteOrder(req, res, id) {
   const row = db.prepare("SELECT id FROM orders WHERE id = ?").get(id);
   if (!row) return sendJSON(res, 404, { error: "الطلب غير موجود" });
+  // حذف ملفات الصور المرفقة من القرص أولاً
+  const imgs = db.prepare("SELECT path FROM order_images WHERE order_id = ?").all(id);
+  for (const im of imgs) {
+    try { fs.unlinkSync(path.join(ROOT, im.path)); } catch {}
+  }
+  db.prepare("DELETE FROM order_images WHERE order_id = ?").run(id);
   db.prepare("DELETE FROM order_items WHERE order_id = ?").run(id);
   db.prepare("DELETE FROM orders WHERE id = ?").run(id);
   sendJSON(res, 200, { ok: true });
@@ -962,7 +1030,7 @@ const server = http.createServer(async (req, res) => {
     if (pubProdMatch && req.method === "GET") return apiPublicProduct(req, res, Number(pubProdMatch[1]));
     if (pathname === "/api/settings/public" && req.method === "GET") return apiPublicSettings(req, res);
     if (pathname === "/api/orders" && req.method === "POST") {
-      const body = await readBody(req);
+      const body = await readBody(req, 30 * 1024 * 1024); // مساحة كافية للصور المرفقة
       return apiCreateOrder(req, res, body);
     }
 

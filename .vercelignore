@@ -1,0 +1,18 @@
+# مشاريع أخرى في نفس المجلد (ليست جزءاً من المتجر)
+GAME/
+godot/
+gravity/
+shooter/
+itch_assets/
+*.bat
+ChatGPT Image*.png
+
+# ملفات وبيانات محلية
+server.js
+scripts/
+data/
+images/uploads/
+images/order_uploads/
+ADMIN_CREDENTIALS.txt
+.vercel-token
+README.md

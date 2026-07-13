@@ -4,17 +4,59 @@
    ==================================================== */
 
 const COMPANY_NAME = "MY BOX STORE";
+const THEME_KEY = "mbs_theme";
 
+// ===== تبديل الوضع الليلي/النهاري (مشترك مع المتجر عبر نفس المفتاح) =====
+function applyTheme(theme, persist) {
+  const t = theme === "dark" ? "dark" : "light";
+  document.documentElement.setAttribute("data-theme", t);
+  if (persist) { try { localStorage.setItem(THEME_KEY, t); } catch {} }
+  document.querySelectorAll(".theme-toggle .theme-icon").forEach((el) => (el.textContent = t === "dark" ? "☀️" : "🌙"));
+  document.querySelectorAll(".theme-toggle").forEach((b) =>
+    b.setAttribute("aria-label", t === "dark" ? "التبديل إلى الوضع النهاري" : "التبديل إلى الوضع الليلي"));
+}
+function toggleTheme() {
+  const cur = document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+  applyTheme(cur === "dark" ? "light" : "dark", true);
+}
+function makeThemeToggle(cls) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "theme-toggle" + (cls ? " " + cls : "");
+  b.innerHTML = `<span class="theme-icon" aria-hidden="true">🌙</span>`;
+  b.addEventListener("click", toggleTheme);
+  return b;
+}
+function initAdminTheme() {
+  // ضع زراً في الشريط العلوي للموبايل وفي القائمة الجانبية
+  const topnav = document.querySelector(".mobile-topnav .tabs");
+  if (topnav && !topnav.querySelector(".theme-toggle")) topnav.insertBefore(makeThemeToggle(), topnav.firstChild);
+  const brand = document.querySelector(".sidebar .brand");
+  if (brand && !brand.querySelector(".theme-toggle")) brand.appendChild(makeThemeToggle());
+  applyTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light", false);
+}
+
+// الحالات المعتمدة (تظهر في قائمة تغيير الحالة)
 const STATUS_LABELS = {
   new: "جديد",
+  under_review: "قيد المراجعة",
+  awaiting_confirmation: "في انتظار تأكيد العميل",
+  design_confirmed: "تم تأكيد التصميم",
+  in_production: "قيد التنفيذ",
+  ready: "تم التجهيز",
+  shipped: "تم الشحن",
+  completed: "مكتمل",
+  cancelled: "ملغي",
+};
+// تسميات قديمة — للعرض فقط لو وُجدت طلبات بحالات سابقة
+const LEGACY_STATUS_LABELS = {
   contacted: "تم التواصل",
   pending_confirmation: "في انتظار التأكيد",
   in_progress: "قيد التنفيذ",
   prepared: "تم التجهيز",
   delivered: "تم التسليم",
-  completed: "مكتمل",
-  cancelled: "ملغي",
 };
+const ALL_STATUS_LABELS = { ...STATUS_LABELS, ...LEGACY_STATUS_LABELS };
 
 const SOURCE_LABELS = { website: "🌐 الموقع", whatsapp: "💬 واتساب" };
 
@@ -44,8 +86,9 @@ function fmtPrice(n) {
 }
 
 function statusBadge(status) {
-  const key = STATUS_LABELS[status] ? status : "new";
-  return `<span class="status-badge ${key}">${STATUS_LABELS[key]}</span>`;
+  const label = ALL_STATUS_LABELS[status];
+  const key = label ? status : "new";
+  return `<span class="status-badge ${key}">${label || ALL_STATUS_LABELS.new}</span>`;
 }
 
 function waPhone(raw) {
@@ -251,10 +294,17 @@ function ordersTableHTML(orders, compact) {
     </table>`;
 }
 
+let _orderImages = []; // للايت بوكس
+
 async function openOrder(id) {
   try {
-    const { order } = await api(`/api/admin/orders/${id}`);
+    const { order } = await api(`/api/admin/orders?id=${id}`);
     const items = order.items || [];
+    _orderImages = (order.images || []).map((im) => ({
+      src: im.url || (im.path ? "../" + im.path : ""),
+      name: im.orig_name || "صورة مرجعية",
+      size: im.size,
+    }));
 
     document.getElementById("modalTitle").textContent = `تفاصيل الطلب ${order.order_number || "#" + order.id}`;
     document.getElementById("modalBody").innerHTML = `
@@ -281,7 +331,17 @@ async function openOrder(id) {
               </ul>`
             : `<div class="v">—</div>`}
         </div>
-        ${order.customer_notes ? `<div class="detail-item full"><div class="k">📝 ملاحظات العميل / التخصيص</div><div class="v">${esc(order.customer_notes)}</div></div>` : ""}
+        ${order.customer_notes ? `<div class="detail-item full"><div class="k">📝 تفاصيل الطباعة / ملاحظات العميل</div><div class="v" style="white-space:pre-wrap;">${esc(order.customer_notes)}</div></div>` : ""}
+        ${_orderImages.length ? `
+        <div class="detail-item full">
+          <div class="k">🖼️ الصور المرجعية المرفقة (${_orderImages.length})</div>
+          <div class="order-images">
+            ${_orderImages.map((im, i) => `
+              <button type="button" class="oi-thumb" onclick="openLightbox(${i})" title="${esc(im.name)}">
+                <img src="${esc(im.src)}" alt="${esc(im.name)}" loading="lazy" />
+              </button>`).join("")}
+          </div>
+        </div>` : ""}
       </div>
 
       <label class="modal-section-label" for="modalStatus">حالة الطلب</label>
@@ -306,11 +366,64 @@ async function openOrder(id) {
   }
 }
 
+// ===== لايت بوكس الصور المرجعية =====
+let _lightboxIndex = 0;
+function openLightbox(index) {
+  if (!_orderImages.length) return;
+  _lightboxIndex = index;
+  let box = document.getElementById("imgLightbox");
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "imgLightbox";
+    box.className = "lightbox";
+    box.innerHTML = `
+      <button class="lb-close" type="button" aria-label="إغلاق" onclick="closeLightbox()">✕</button>
+      <button class="lb-nav lb-prev" type="button" aria-label="السابق" onclick="lightboxStep(-1)">‹</button>
+      <figure class="lb-figure">
+        <img id="lbImg" src="" alt="" />
+        <figcaption id="lbCap"></figcaption>
+      </figure>
+      <button class="lb-nav lb-next" type="button" aria-label="التالي" onclick="lightboxStep(1)">›</button>
+      <a id="lbDownload" class="lb-download" download>⬇️ تحميل الأصل</a>`;
+    document.body.appendChild(box);
+    box.addEventListener("click", (e) => { if (e.target === box) closeLightbox(); });
+    document.addEventListener("keydown", lightboxKey);
+  }
+  renderLightbox();
+  box.classList.add("open");
+}
+function renderLightbox() {
+  const im = _orderImages[_lightboxIndex];
+  if (!im) return;
+  document.getElementById("lbImg").src = im.src;
+  document.getElementById("lbImg").alt = im.name;
+  document.getElementById("lbCap").textContent = `${im.name} — ${_lightboxIndex + 1} / ${_orderImages.length}`;
+  const dl = document.getElementById("lbDownload");
+  dl.href = im.src;
+  dl.setAttribute("download", im.name || "reference");
+  document.querySelector(".lb-prev").style.visibility = _orderImages.length > 1 ? "visible" : "hidden";
+  document.querySelector(".lb-next").style.visibility = _orderImages.length > 1 ? "visible" : "hidden";
+}
+function lightboxStep(d) {
+  _lightboxIndex = (_lightboxIndex + d + _orderImages.length) % _orderImages.length;
+  renderLightbox();
+}
+function closeLightbox() {
+  document.getElementById("imgLightbox")?.classList.remove("open");
+}
+function lightboxKey(e) {
+  const box = document.getElementById("imgLightbox");
+  if (!box || !box.classList.contains("open")) return;
+  if (e.key === "Escape") closeLightbox();
+  else if (e.key === "ArrowLeft") lightboxStep(1);
+  else if (e.key === "ArrowRight") lightboxStep(-1);
+}
+
 async function saveOrder(id) {
   const status = document.getElementById("modalStatus").value;
   const internal_notes = document.getElementById("modalNotes").value;
   try {
-    await api(`/api/admin/orders/${id}`, {
+    await api(`/api/admin/orders?id=${id}`, {
       method: "PATCH",
       body: JSON.stringify({ status, internal_notes }),
     });
@@ -326,7 +439,7 @@ async function saveOrder(id) {
 async function deleteOrder(id) {
   if (!confirm("هل أنت متأكد من حذف هذا الطلب نهائيًا؟ لا يمكن التراجع.")) return;
   try {
-    await api(`/api/admin/orders/${id}`, { method: "DELETE" });
+    await api(`/api/admin/orders?id=${id}`, { method: "DELETE" });
     showToast("🗑️ تم حذف الطلب");
     closeModal("orderModal");
     loadOverview();
@@ -451,7 +564,7 @@ function productsTableHTML(products) {
 
 async function quickUpdateProduct(id, patch, successMsg) {
   try {
-    await api(`/api/admin/products/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+    await api(`/api/admin/products?id=${id}`, { method: "PATCH", body: JSON.stringify(patch) });
     showToast("✅ " + successMsg);
     loadProducts();
   } catch (err) {
@@ -462,7 +575,7 @@ async function quickUpdateProduct(id, patch, successMsg) {
 async function deleteProduct(id, name) {
   if (!confirm(`حذف نهائي للمنتج "${name}"؟\n\nنصيحة: يمكنك إخفاؤه مؤقتًا بدلاً من الحذف. الطلبات السابقة لن تتأثر.`)) return;
   try {
-    await api(`/api/admin/products/${id}`, { method: "DELETE" });
+    await api(`/api/admin/products?id=${id}`, { method: "DELETE" });
     showToast("🗑️ تم حذف المنتج نهائيًا");
     loadProducts();
     loadOverview();
@@ -688,7 +801,7 @@ async function saveProduct(id) {
     if (imagePath) payload.image = imagePath;
 
     if (id) {
-      await api(`/api/admin/products/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
+      await api(`/api/admin/products?id=${id}`, { method: "PATCH", body: JSON.stringify(payload) });
       showToast("✅ تم حفظ تعديلات المنتج بنجاح");
     } else {
       await api("/api/admin/products", { method: "POST", body: JSON.stringify(payload) });
@@ -787,6 +900,7 @@ function clearProductFilters() {
 
 // ===== بدء التشغيل =====
 (async function init() {
+  initAdminTheme();
   try {
     await api("/api/admin/me");
   } catch {

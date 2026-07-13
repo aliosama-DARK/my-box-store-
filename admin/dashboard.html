@@ -6,6 +6,18 @@
   <title>لوحة التحكم — MY BOX STORE</title>
   <meta name="robots" content="noindex, nofollow" />
   <link rel="icon" href="../images/logo.jpeg" />
+  <script>
+    (function () {
+      try {
+        var q=(location.search.match(/[?&]theme=(dark|light)/)||[])[1];
+        var t = q || localStorage.getItem("mbs_theme");
+        if(q) localStorage.setItem("mbs_theme",q);
+        if (t !== "light" && t !== "dark")
+          t = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", t);
+      } catch (e) { document.documentElement.setAttribute("data-theme", "light"); }
+    })();
+  </script>
   <link rel="stylesheet" href="admin.css" />
 </head>
 <body>
@@ -92,11 +104,12 @@
             <select id="fStatus">
               <option value="">كل الحالات</option>
               <option value="new">جديد</option>
-              <option value="contacted">تم التواصل</option>
-              <option value="pending_confirmation">في انتظار التأكيد</option>
-              <option value="in_progress">قيد التنفيذ</option>
-              <option value="prepared">تم التجهيز</option>
-              <option value="delivered">تم التسليم</option>
+              <option value="under_review">قيد المراجعة</option>
+              <option value="awaiting_confirmation">في انتظار تأكيد العميل</option>
+              <option value="design_confirmed">تم تأكيد التصميم</option>
+              <option value="in_production">قيد التنفيذ</option>
+              <option value="ready">تم التجهيز</option>
+              <option value="shipped">تم الشحن</option>
               <option value="completed">مكتمل</option>
               <option value="cancelled">ملغي</option>
             </select>

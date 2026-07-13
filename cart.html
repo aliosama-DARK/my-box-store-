@@ -6,6 +6,20 @@
   <title>سلة التسوق — MY BOX STORE</title>
   <meta name="description" content="مراجعة سلة التسوق وإتمام الطلب في MY BOX STORE." />
   <link rel="icon" href="images/logo.jpeg" />
+  <script>
+    (function () {
+      try {
+        var q = (location.search.match(/[?&]theme=(dark|light)/) || [])[1];
+        var t = q || localStorage.getItem("mbs_theme");
+        if (q) localStorage.setItem("mbs_theme", q);
+        if (t !== "light" && t !== "dark")
+          t = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", t);
+      } catch (e) {
+        document.documentElement.setAttribute("data-theme", "light");
+      }
+    })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=El+Messiri:wght@500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -101,7 +115,7 @@
     </div>
   </footer>
 
-  <script src="app.js"></script>
+  <script src="store.js"></script>
   <script>
     renderCart();
   </script>
