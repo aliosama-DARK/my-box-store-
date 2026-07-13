@@ -559,7 +559,31 @@ function toggleMenu() {
   document.querySelector(".nav")?.classList.toggle("open");
 }
 
+// ===== حركة الظهور عند التمرير (تحترم تقليل الحركة) =====
+function initReveal() {
+  const els = document.querySelectorAll(".reveal");
+  if (!els.length) return;
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduce || !("IntersectionObserver" in window)) {
+    els.forEach((el) => el.classList.add("in"));
+    return;
+  }
+  const obs = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((e) => {
+        if (e.isIntersecting) {
+          e.target.classList.add("in");
+          obs.unobserve(e.target);
+        }
+      });
+    },
+    { threshold: 0.12, rootMargin: "0px 0px -8% 0px" }
+  );
+  els.forEach((el) => obs.observe(el));
+}
+
 // ===== التشغيل عند التحميل =====
 document.addEventListener("DOMContentLoaded", () => {
   updateCartCount();
+  initReveal();
 });

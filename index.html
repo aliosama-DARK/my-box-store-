@@ -6,6 +6,9 @@
   <title>MY BOX STORE — طباعة وهدايا مخصصة</title>
   <meta name="description" content="MY BOX STORE — متجر الطباعة والهدايا المخصصة: دروع وتذكارات، شهادات، تيشيرتات ومجات مطبوعة بتصميمك الخاص." />
   <link rel="icon" href="images/logo.jpeg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=El+Messiri:wght@500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -38,9 +41,10 @@
   <section class="hero">
     <div class="container hero-inner">
       <div>
-        <h1>اطبع لمستك الخاصة<br />على كل هدية مميزة</h1>
-        <p>MY BOX STORE متخصصون في الطباعة والهدايا المخصصة — دروع وتذكارات، شهادات، تيشيرتات ومجات بتصميمك واسمك. جودة عالية وتسليم سريع.</p>
-        <a href="products.html" class="btn btn-light">اطلب منتجك الآن ←</a>
+        <span class="plate-eyebrow on-dark">أتيليه الطباعة والتكريم</span>
+        <h1>نحفر لمستك الخاصة<br />على كل <span class="gold">هدية تُخلّد</span></h1>
+        <p>دروع كريستال محفورة، شهادات بإطارات فاخرة، وطباعة مخصّصة على التيشيرتات والمجات — بتصميمك واسمك. حِرَفية عالية وتسليم سريع لكل المحافظات.</p>
+        <a href="products.html" class="btn btn-primary">تصفّح التشكيلة ←</a>
       </div>
       <div class="hero-art">
         <div class="hero-card">🏆<span>دروع وتذكارات</span></div>
@@ -54,9 +58,9 @@
   <!-- الفئات -->
   <section id="categories">
     <div class="container">
-      <h2 class="section-title">تسوّق حسب الفئة</h2>
-      <p class="section-sub">اختار نوع المنتج اللي محتاج تطبع عليه تصميمك</p>
-      <div class="categories">
+      <h2 class="section-title reveal">تسوّق حسب الفئة</h2>
+      <p class="section-sub reveal">اختار نوع المنتج اللي محتاج تطبع عليه تصميمك</p>
+      <div class="categories reveal">
         <a href="products.html?cat=awards" class="category-card">
           <div class="emoji">🏆</div>
           <h3>دروع وتذكارات</h3>
@@ -84,8 +88,8 @@
   <!-- منتجات مميزة -->
   <section style="padding-top:0;">
     <div class="container">
-      <h2 class="section-title">منتجاتنا</h2>
-      <p class="section-sub">منتجات قابلة للتخصيص بالكامل بتصميمك واسمك</p>
+      <h2 class="section-title reveal">منتجاتنا</h2>
+      <p class="section-sub reveal">منتجات قابلة للتخصيص بالكامل بتصميمك واسمك</p>
       <div class="products-grid" id="productsGrid"></div>
       <div style="text-align:center;margin-top:36px;">
         <a href="products.html" class="btn btn-primary">عرض كل المنتجات</a>
@@ -95,7 +99,7 @@
 
   <!-- المميزات -->
   <section class="features">
-    <div class="container features-grid">
+    <div class="container features-grid reveal">
       <div class="feature"><div class="emoji">🎨</div><h4>تصميم مخصص</h4><p>اطبع اسمك أو شعارك أو أي تصميم</p></div>
       <div class="feature"><div class="emoji">🚚</div><h4>توصيل سريع</h4><p>لكل المحافظات خلال 2-4 أيام</p></div>
       <div class="feature"><div class="emoji">💵</div><h4>الدفع عند الاستلام</h4><p>ادفع بعد ما توصلك الطلبية</p></div>
