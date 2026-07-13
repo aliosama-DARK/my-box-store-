@@ -141,26 +141,24 @@ function productCardHTML(p) {
     ? `<span class="unavailable-overlay">${escapeHTML(p.availability_label || "غير متوفر حاليًا")}</span>`
     : "";
 
-  const actionBtn = p.orderable
-    ? `<button class="add-btn" data-id="${p.id}">أضف للسلة</button>`
-    : `<button class="add-btn disabled" disabled>${escapeHTML(p.availability_label || "غير متوفر حاليًا")}</button>`;
-
+  // البطاقة كلها رابط لصفحة التفاصيل — لا إضافة مباشرة للسلة من هنا (§7)
+  const href = `product.html?id=${p.id}`;
   return `
-    <article class="product-card ${p.orderable ? "" : "is-unavailable"}" data-cat="${escapeHTML(p.category_key || "")}">
-      <a class="product-img" href="product.html?id=${p.id}">
+    <a class="product-card ${p.orderable ? "" : "is-unavailable"}" href="${href}" data-cat="${escapeHTML(p.category_key || "")}">
+      <span class="product-img">
         <img src="${escapeHTML(p.image || "images/logo.jpeg")}" alt="${escapeHTML(p.name)}" loading="lazy" />
         ${badge}
         ${unavailable}
-      </a>
-      <div class="product-body">
+      </span>
+      <span class="product-body">
         <span class="product-cat">${escapeHTML(p.category_name || "")}</span>
-        <a class="product-name-link" href="product.html?id=${p.id}"><h3 class="product-name">${escapeHTML(p.name)}</h3></a>
-        <div class="product-footer">
-          <div class="product-price">${priceHTML(p)}</div>
-          ${actionBtn}
-        </div>
-      </div>
-    </article>`;
+        <span class="product-name">${escapeHTML(p.name)}</span>
+        <span class="product-footer">
+          <span class="product-price">${priceHTML(p)}</span>
+        </span>
+        <span class="btn-details">عرض التفاصيل ←</span>
+      </span>
+    </a>`;
 }
 
 // ===== رسم شبكة المنتجات =====
