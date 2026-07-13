@@ -244,6 +244,7 @@ module.exports = async (req, res) => {
           if (out.variations !== undefined) set("variations", JSON.stringify(out.variations), "::jsonb");
           if (out.sizes !== undefined) set("sizes", JSON.stringify(out.sizes), "::jsonb");
           if (out.materials !== undefined) set("materials", JSON.stringify(out.materials), "::jsonb");
+          if (out.bg_color !== undefined) set("bg_color", out.bg_color);
           if (out.is_visible !== undefined) set("is_visible", out.is_visible);
           if (out.is_featured !== undefined) set("is_featured", out.is_featured);
           if (out.display_order !== undefined) set("display_order", out.display_order);
@@ -294,6 +295,7 @@ module.exports = async (req, res) => {
            ${JSON.stringify(out.sizes || [])}::jsonb, ${JSON.stringify(out.materials || [])}::jsonb,
            ${out.is_visible ?? true}, ${out.is_featured ?? false}, ${out.internal_notes || ""}, ${out.display_order ?? maxSort + 1}, now(), now())
           RETURNING id`)[0];
+        if (out.bg_color !== undefined) await sql`UPDATE products SET bg_color = ${out.bg_color} WHERE id = ${row.id}`;
         const full = (await sql`SELECT p.*, c.key AS category_key, c.name AS category_name
           FROM products p LEFT JOIN categories c ON c.id = p.category_id WHERE p.id = ${row.id}`)[0];
         return sendJSON(res, 201, { ok: true, product: adminProduct(full) });

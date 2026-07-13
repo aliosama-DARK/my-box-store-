@@ -833,3 +833,14 @@ tr.row-hidden:hover { opacity: 0.85; }
   font-family: inherit; font-size: 0.9rem; background: var(--surface); color: var(--text);
 }
 .opt-row .opt-avail { display: flex; align-items: center; gap: 4px; white-space: nowrap; font-size: 0.85rem; color: var(--muted); }
+
+/* معرض صور المنتج في النموذج */
+.pf-gallery { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.pf-gallery-empty { color: var(--muted); font-size: 0.85rem; padding: 12px; border: 1px dashed var(--border); border-radius: 8px; width: 100%; text-align: center; }
+.gal-thumb { position: relative; width: 84px; height: 84px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); background: var(--bg); }
+.gal-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.gal-main { position: absolute; top: 3px; inset-inline-start: 3px; background: var(--primary); color: #fff; font-size: 0.6rem; padding: 1px 6px; border-radius: 4px; }
+.gal-actions { position: absolute; bottom: 0; inset-inline: 0; display: flex; justify-content: center; gap: 3px; background: rgba(0,0,0,0.55); padding: 3px; }
+.gal-actions button { border: none; background: rgba(255,255,255,0.22); color: #fff; width: 24px; height: 20px; border-radius: 4px; cursor: pointer; font-size: 0.72rem; line-height: 1; }
+.gal-actions button:hover { background: rgba(255,255,255,0.4); }
+.gal-actions button.danger { background: var(--danger, #d63a54); }

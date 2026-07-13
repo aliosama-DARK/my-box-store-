@@ -170,7 +170,7 @@ function productCardHTML(p) {
   const href = `product.html?id=${p.id}`;
   return `
     <a class="product-card ${p.orderable ? "" : "is-unavailable"}" href="${href}" data-cat="${escapeHTML(p.category_key || "")}">
-      <span class="product-img">
+      <span class="product-img"${p.bg_color ? ` style="--product-bg:${escapeHTML(p.bg_color)}"` : ""}>
         <img src="${escapeHTML(p.image || "images/logo.jpeg")}" alt="${escapeHTML(p.name)}" loading="lazy" />
         ${badge}
         ${unavailable}
@@ -307,8 +307,13 @@ async function renderProductDetail() {
       <span>${escapeHTML(p.name)}</span>
     </nav>
     <div class="detail-grid">
-      <div class="detail-img">
-        <img src="${escapeHTML(p.image || "images/logo.jpeg")}" alt="${escapeHTML(p.name)}" />
+      <div class="detail-gallery">
+        <div class="detail-img"${p.bg_color ? ` style="--product-bg:${escapeHTML(p.bg_color)}"` : ""}>
+          <img id="detailMainImg" src="${escapeHTML((p.images && p.images[0]) || p.image || "images/logo.jpeg")}" alt="${escapeHTML(p.name)}" />
+        </div>
+        ${p.images && p.images.length > 1
+          ? `<div class="detail-thumbs">${p.images.map((im, i) => `<button type="button" class="detail-thumb ${i === 0 ? "active" : ""}" onclick="detailSetImg(this, '${escapeHTML(im)}')"><img src="${escapeHTML(im)}" alt="" loading="lazy"></button>`).join("")}</div>`
+          : ""}
       </div>
       <div class="detail-info">
         ${badge}
@@ -338,6 +343,13 @@ async function renderProductDetail() {
 // ===== خيارات صفحة المنتج =====
 let _detailProduct = null;
 let detailSel = { size: null, material: null };
+
+function detailSetImg(btn, src) {
+  const main = document.getElementById("detailMainImg");
+  if (main) main.src = src;
+  document.querySelectorAll(".detail-thumb").forEach((b) => b.classList.remove("active"));
+  btn.classList.add("active");
+}
 
 function selectOption(kind, btn) {
   btn.closest(".opt-chips").querySelectorAll(".opt-chip").forEach((b) => b.classList.remove("active"));

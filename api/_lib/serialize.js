@@ -34,6 +34,7 @@ function publicProduct(p) {
     slug: p.slug,
     image: images[0] || "images/logo.jpeg",
     images,
+    bg_color: p.bg_color || null,
     short_description: p.short_description,
     description: p.full_description,
     details: asArray(p.specifications),

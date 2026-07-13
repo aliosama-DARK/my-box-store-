@@ -603,14 +603,20 @@ function openProductForm(id) {
       </div>
 
       <div class="form-group">
-        <label>صورة المنتج</label>
-        <div class="img-upload-row">
-          <img id="pfImgPreview" class="img-preview" src="${mainImg ? "../" + esc(mainImg) : "../images/logo.jpeg"}" onerror="this.src='../images/logo.jpeg'" />
-          <div style="flex:1;">
-            <input type="file" id="pfImageFile" accept="image/png,image/jpeg,image/webp">
-            <small style="color:var(--muted);display:block;margin-top:4px;">PNG / JPG / WEBP — حتى 3 ميجابايت</small>
-          </div>
+        <label>صور المنتج (الأولى هي الرئيسية — استخدم الأسهم للترتيب)</label>
+        <div id="pfGallery" class="pf-gallery"></div>
+        <input type="file" id="pfImageFile" accept="image/png,image/jpeg,image/webp" multiple>
+        <small style="color:var(--muted);display:block;margin-top:4px;">PNG / JPG / WEBP — حتى 3 ميجابايت للصورة — يمكن رفع أكثر من صورة</small>
+      </div>
+      <div class="form-2col">
+        <div class="form-group">
+          <label>لون خلفية صورة المنتج</label>
+          <input type="color" id="pfBg" value="${p && p.bg_color ? esc(p.bg_color) : "#f4f1fa"}">
         </div>
+        <label class="check-row" style="align-self:end;">
+          <input type="checkbox" id="pfBgOff" ${p && p.bg_color ? "" : "checked"}>
+          <span>استخدم الخلفية الافتراضية</span>
+        </label>
       </div>
 
       <div class="form-2col">
@@ -704,20 +710,26 @@ function openProductForm(id) {
     </div>`;
 
   // معاينة الصورة عند اختيار ملف
-  document.getElementById("pfImageFile").addEventListener("change", (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (file.size > 3 * 1024 * 1024) {
-      showToast("⚠️ حجم الصورة أكبر من 3 ميجابايت", "error");
-      e.target.value = "";
-      return;
+  // معرض الصور
+  pfImages = p && Array.isArray(p.images) ? [...p.images] : [];
+  renderPfGallery();
+  document.getElementById("pfImageFile").addEventListener("change", async (e) => {
+    const files = [...e.target.files];
+    e.target.value = "";
+    for (const file of files) {
+      if (file.size > 3 * 1024 * 1024) { showToast(`⚠️ "${file.name}" أكبر من 3 ميجابايت`, "error"); continue; }
+      try {
+        const dataUrl = await new Promise((res, rej) => {
+          const r = new FileReader();
+          r.onload = () => res(r.result);
+          r.onerror = rej;
+          r.readAsDataURL(file);
+        });
+        const up = await api("/api/admin/upload", { method: "POST", body: JSON.stringify({ data: dataUrl }) });
+        pfImages.push(up.path);
+        renderPfGallery();
+      } catch (err) { handleErr(err); }
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      pendingImageData = reader.result;
-      document.getElementById("pfImgPreview").src = pendingImageData;
-    };
-    reader.readAsDataURL(file);
   });
 
   // تعبئة صفوف المقاسات/الخامات الموجودة
@@ -726,6 +738,32 @@ function openProductForm(id) {
 
   updateDiscountHint();
   document.getElementById("productModal").classList.add("open");
+}
+
+// ===== معرض صور المنتج في النموذج =====
+let pfImages = [];
+function galSrc(s) { return /^https?:\/\//.test(s) ? s : "../" + s; }
+function renderPfGallery() {
+  const el = document.getElementById("pfGallery");
+  if (!el) return;
+  if (!pfImages.length) { el.innerHTML = `<div class="pf-gallery-empty">لا توجد صور — ارفع صورة أو أكثر</div>`; return; }
+  el.innerHTML = pfImages.map((src, i) => `
+    <div class="gal-thumb">
+      <img src="${galSrc(esc(src))}" onerror="this.src='../images/logo.jpeg'" />
+      ${i === 0 ? '<span class="gal-main">رئيسية</span>' : ""}
+      <div class="gal-actions">
+        ${i > 0 ? `<button type="button" onclick="pfMoveImage(${i},-1)" title="تحريك">◀</button>` : ""}
+        ${i < pfImages.length - 1 ? `<button type="button" onclick="pfMoveImage(${i},1)" title="تحريك">▶</button>` : ""}
+        <button type="button" class="danger" onclick="pfRemoveImage(${i})" title="حذف">✕</button>
+      </div>
+    </div>`).join("");
+}
+function pfRemoveImage(i) { pfImages.splice(i, 1); renderPfGallery(); }
+function pfMoveImage(i, dir) {
+  const j = i + dir;
+  if (j < 0 || j >= pfImages.length) return;
+  [pfImages[i], pfImages[j]] = [pfImages[j], pfImages[i]];
+  renderPfGallery();
 }
 
 // صف خيار (مقاس/خامة) قابل للتكرار
@@ -797,19 +835,11 @@ async function saveProduct(id) {
   btn.textContent = "جارٍ الحفظ...";
 
   try {
-    // رفع الصورة الجديدة أولاً إن وجدت
-    let imagePath;
-    if (pendingImageData) {
-      const up = await api("/api/admin/upload", {
-        method: "POST",
-        body: JSON.stringify({ data: pendingImageData }),
-      });
-      imagePath = up.path;
-    }
-
     const payload = {
       name,
       price,
+      images: pfImages,
+      bg_color: document.getElementById("pfBgOff").checked ? null : document.getElementById("pfBg").value,
       sale_price: sale,
       offer_start_date: document.getElementById("pfOfferStart").value || null,
       offer_end_date: document.getElementById("pfOfferEnd").value || null,
@@ -827,7 +857,6 @@ async function saveProduct(id) {
     };
     const sortVal = document.getElementById("pfSort").value;
     if (sortVal !== "") payload.display_order = Number(sortVal);
-    if (imagePath) payload.images = [imagePath];
 
     if (id) {
       await api(`/api/admin/products?id=${id}`, { method: "PATCH", body: JSON.stringify(payload) });

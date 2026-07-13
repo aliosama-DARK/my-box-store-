@@ -76,6 +76,10 @@ function validateProductBody(body, partial = false) {
       desc: cleanStr(m && m.desc, 160),
     })).filter((m) => m.name);
   }
+  if (has("bg_color")) {
+    const c = cleanStr(body.bg_color, 30);
+    out.bg_color = /^#[0-9a-fA-F]{3,8}$/.test(c) ? c : null;
+  }
   if (has("is_visible")) out.is_visible = toBool(body.is_visible);
   if (has("is_featured")) out.is_featured = toBool(body.is_featured);
   if (has("display_order")) out.display_order = Math.floor(Number(body.display_order)) || 0;

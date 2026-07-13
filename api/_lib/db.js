@@ -102,6 +102,7 @@ function ensureSchema() {
     // خيارات المنتج (مقاسات/خامات) + snapshot الخيارات المختارة في الطلب
     await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS sizes JSONB NOT NULL DEFAULT '[]'::jsonb`;
     await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS materials JSONB NOT NULL DEFAULT '[]'::jsonb`;
+    await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS bg_color TEXT`;
     await sql`ALTER TABLE order_items ADD COLUMN IF NOT EXISTS selected_size TEXT`;
     await sql`ALTER TABLE order_items ADD COLUMN IF NOT EXISTS selected_material TEXT`;
     await sql`CREATE TABLE IF NOT EXISTS order_attachments (
