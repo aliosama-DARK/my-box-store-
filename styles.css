@@ -411,6 +411,34 @@ button { font-family: inherit; }
 }
 .hero-inner > div:first-child { animation: rise 0.8s ease both; }
 
+/* ===== هيرو متمركز بعرض الصفحة (الصفحة الرئيسية) ===== */
+.hero-centered {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 74vh;
+  padding: 96px 0;
+  text-align: center;
+}
+.hero-centered .container { width: 100%; }
+.hero-content {
+  max-width: 820px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+  animation: rise 0.8s ease both;
+}
+.hero-centered .plate-eyebrow { margin-bottom: 20px; }
+.hero-centered h1 { margin-bottom: 24px; }
+.hero-centered h1 .gold::after { right: 0; left: 0; }
+.hero-centered p {
+  margin: 0 auto;
+  max-width: 640px;
+  font-size: 1.18rem;
+  line-height: 1.95;
+  color: var(--on-dark-soft);
+}
+
 .hero-art {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1026,6 +1054,8 @@ section { padding: 72px 0; }
   .nav a::after { display: none; }
   .menu-toggle { display: block; }
   .hero { padding: 60px 0 70px; }
+  .hero-centered { min-height: auto; padding: 66px 0; }
+  .hero-centered p { font-size: 1.02rem; line-height: 1.85; }
   .categories, .features-grid, .footer-grid { grid-template-columns: 1fr; }
   .products-grid { grid-template-columns: repeat(2, 1fr); gap: 11px; }
   .product-body { padding: 10px 10px 12px; }
