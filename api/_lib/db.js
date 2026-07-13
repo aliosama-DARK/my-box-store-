@@ -73,6 +73,10 @@ function ensureSchema() {
       id SERIAL PRIMARY KEY, key TEXT UNIQUE, name TEXT NOT NULL, slug TEXT, description TEXT, image TEXT,
       display_order INT NOT NULL DEFAULT 0, is_visible BOOLEAN NOT NULL DEFAULT true,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now())`;
+    // أعمدة إضافية للفئات (SEO + خلفية) — تُضاف بأمان للجداول القائمة
+    await sql`ALTER TABLE categories ADD COLUMN IF NOT EXISTS seo_title TEXT`;
+    await sql`ALTER TABLE categories ADD COLUMN IF NOT EXISTS seo_description TEXT`;
+    await sql`ALTER TABLE categories ADD COLUMN IF NOT EXISTS background_image TEXT`;
     await sql`CREATE TABLE IF NOT EXISTS products (
       id SERIAL PRIMARY KEY, category_id INT REFERENCES categories(id) ON DELETE SET NULL,
       name TEXT NOT NULL, slug TEXT, short_description TEXT, full_description TEXT,

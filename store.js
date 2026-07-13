@@ -197,6 +197,30 @@ async function renderProducts(filter = "all", containerId = "productsGrid", limi
   bindAddButtons();
 }
 
+// بناء أزرار الفلترة من الفئات المرئية (ديناميكياً)
+async function renderCategoryFilters(containerId, initial) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  let cats = [];
+  try {
+    const r = await fetch("api/categories");
+    if (r.ok) cats = (await r.json()).categories || [];
+  } catch (_) {}
+  const parts = [`<button class="filter-btn" data-filter="all">الكل</button>`]
+    .concat(cats.map((c) => `<button class="filter-btn" data-filter="${escapeHTML(c.key)}">${escapeHTML(c.name)}</button>`))
+    .concat([`<button class="filter-btn" data-filter="offers">🔥 العروض</button>`]);
+  el.innerHTML = parts.join("");
+  el.querySelectorAll(".filter-btn").forEach((btn) => {
+    if (btn.dataset.filter === initial) btn.classList.add("active");
+    btn.addEventListener("click", () => {
+      el.querySelector(".filter-btn.active")?.classList.remove("active");
+      btn.classList.add("active");
+      renderProducts(btn.dataset.filter, "productsGrid");
+    });
+  });
+  if (!el.querySelector(".filter-btn.active")) el.querySelector('[data-filter="all"]')?.classList.add("active");
+}
+
 function bindAddButtons() {
   document.querySelectorAll(".add-btn:not(.disabled)").forEach((btn) => {
     btn.onclick = () => {

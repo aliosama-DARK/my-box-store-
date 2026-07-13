@@ -64,10 +64,6 @@
     <div class="container">
       <div class="filters" id="filters">
         <button class="filter-btn active" data-filter="all">الكل</button>
-        <button class="filter-btn" data-filter="awards">دروع وتذكارات</button>
-        <button class="filter-btn" data-filter="certificates">شهادات</button>
-        <button class="filter-btn" data-filter="prints">مطبوعات</button>
-        <button class="filter-btn" data-filter="offers">🔥 العروض</button>
       </div>
       <div class="products-grid" id="productsGrid"></div>
     </div>
@@ -127,19 +123,8 @@
     const params = new URLSearchParams(location.search);
     const initialCat = params.get("cat") || "all";
 
+    renderCategoryFilters("filters", initialCat);
     renderProducts(initialCat, "productsGrid");
-
-    document.querySelectorAll(".filter-btn").forEach((btn) => {
-      if (btn.dataset.filter === initialCat) {
-        document.querySelector(".filter-btn.active")?.classList.remove("active");
-        btn.classList.add("active");
-      }
-      btn.addEventListener("click", () => {
-        document.querySelector(".filter-btn.active")?.classList.remove("active");
-        btn.classList.add("active");
-        renderProducts(btn.dataset.filter, "productsGrid");
-      });
-    });
   </script>
 </body>
 </html>

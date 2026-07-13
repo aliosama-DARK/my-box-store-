@@ -1,6 +1,6 @@
 // معالج موحّد لكل مسارات /api/admin/* (مقطع واحد + معرّف عبر ?id=) لتناسب حد خطة Hobby
 const { getSql, getPool, ensureSchema, getSetting, setSetting } = require("../_lib/db");
-const { sendJSON, readJson, cleanStr, toBool, normalizePhone, makeRateLimiter, clientIp } = require("../_lib/util");
+const { sendJSON, readJson, cleanStr, toBool, normalizePhone, makeRateLimiter, clientIp, slugify } = require("../_lib/util");
 const auth = require("../_lib/auth");
 const { adminProduct } = require("../_lib/serialize");
 const { validateProductBody } = require("../_lib/product_input");
@@ -53,8 +53,57 @@ module.exports = async (req, res) => {
 
     if (action === "me") return sendJSON(res, 200, { ok: true, name: admin.name, email: admin.email });
 
-    if (action === "categories")
-      return sendJSON(res, 200, { categories: await sql`SELECT * FROM categories ORDER BY display_order ASC, id ASC` });
+    if (action === "categories") {
+      if (id !== null) {
+        if (!Number.isInteger(id)) return sendJSON(res, 400, { error: "معرّف غير صالح" });
+        if (method === "PATCH") {
+          const b = await readJson(req);
+          const sets = [], params = [];
+          let i = 1;
+          const set = (c, v) => { sets.push(`${c} = $${i}`); params.push(v); i++; };
+          if (b.name !== undefined) { const n = cleanStr(b.name, 80); if (!n) return sendJSON(res, 400, { error: "اسم الفئة مطلوب" }); set("name", n); }
+          if (b.description !== undefined) set("description", cleanStr(b.description, 500));
+          if (b.image !== undefined) set("image", cleanStr(b.image, 500) || null);
+          if (b.background_image !== undefined) set("background_image", cleanStr(b.background_image, 500) || null);
+          if (b.seo_title !== undefined) set("seo_title", cleanStr(b.seo_title, 120));
+          if (b.seo_description !== undefined) set("seo_description", cleanStr(b.seo_description, 300));
+          if (b.display_order !== undefined) set("display_order", Math.floor(Number(b.display_order)) || 0);
+          if (b.is_visible !== undefined) set("is_visible", toBool(b.is_visible));
+          if (!sets.length) return sendJSON(res, 400, { error: "لا يوجد ما يتم تحديثه" });
+          sets.push("updated_at = now()");
+          params.push(id);
+          const pool = getPool();
+          try { await pool.query(`UPDATE categories SET ${sets.join(", ")} WHERE id = $${i}`, params); }
+          finally { await pool.end(); }
+          return sendJSON(res, 200, { ok: true, category: (await sql`SELECT * FROM categories WHERE id = ${id}`)[0] });
+        }
+        if (method === "DELETE") {
+          await sql`DELETE FROM categories WHERE id = ${id}`; // منتجاتها تصبح بلا فئة (FK SET NULL)
+          return sendJSON(res, 200, { ok: true });
+        }
+        return sendJSON(res, 405, { error: "method not allowed" });
+      }
+      if (method === "GET")
+        return sendJSON(res, 200, { categories: await sql`SELECT * FROM categories ORDER BY display_order ASC, id ASC` });
+      if (method === "POST") {
+        const b = await readJson(req);
+        const name = cleanStr(b.name, 80);
+        if (!name) return sendJSON(res, 400, { error: "اسم الفئة مطلوب" });
+        let baseKey = slugify(name) || "cat-" + name.length;
+        let key = baseKey, n = 1;
+        while ((await sql`SELECT id FROM categories WHERE key = ${key}`)[0]) key = `${baseKey}-${++n}`;
+        const maxo = (await sql`SELECT COALESCE(MAX(display_order),0)::int AS m FROM categories`)[0].m;
+        const row = (await sql`INSERT INTO categories
+          (key,name,slug,description,image,background_image,seo_title,seo_description,display_order,is_visible,created_at,updated_at)
+          VALUES (${key}, ${name}, ${key}, ${cleanStr(b.description || "", 500)},
+            ${cleanStr(b.image || "", 500) || null}, ${cleanStr(b.background_image || "", 500) || null},
+            ${cleanStr(b.seo_title || "", 120)}, ${cleanStr(b.seo_description || "", 300)},
+            ${maxo + 1}, ${b.is_visible === undefined ? true : toBool(b.is_visible)}, now(), now())
+          RETURNING *`)[0];
+        return sendJSON(res, 201, { ok: true, category: row });
+      }
+      return sendJSON(res, 405, { error: "method not allowed" });
+    }
 
     if (action === "stats") {
       const statusRows = await sql`SELECT status, COUNT(*)::int AS c FROM orders GROUP BY status`;

@@ -133,7 +133,7 @@ function handleErr(err) {
 }
 
 // ===== التنقل بين الأقسام =====
-const VIEWS = ["overview", "orders", "products", "settings"];
+const VIEWS = ["overview", "orders", "products", "categories", "settings"];
 function switchView(view) {
   VIEWS.forEach((v) => {
     const el = document.getElementById(`view-${v}`);
@@ -145,6 +145,7 @@ function switchView(view) {
   if (view === "overview") loadOverview();
   if (view === "orders") loadOrders();
   if (view === "products") loadProducts();
+  if (view === "categories") loadCategories();
   if (view === "settings") loadSettings();
 }
 
@@ -957,12 +958,143 @@ async function saveSettings() {
 }
 
 // ===================================================================
+// إدارة الفئات
+// ===================================================================
+let CATS_ADMIN = [];
+let pendingCatImage = null;
+
+async function loadCategories() {
+  const wrap = document.getElementById("categoriesWrap");
+  try {
+    const { categories } = await api("/api/admin/categories");
+    CATS_ADMIN = categories;
+    if (!categories.length) {
+      wrap.innerHTML = emptyStateHTML("لا توجد فئات", "أضف فئة لتصنيف منتجاتك");
+      return;
+    }
+    wrap.innerHTML = `
+      <table class="orders-table zones-table">
+        <thead><tr><th>الفئة</th><th>الوصف</th><th>الترتيب</th><th>الحالة</th><th>إجراءات</th></tr></thead>
+        <tbody>
+          ${categories.map((c) => `
+            <tr class="${c.is_visible ? "" : "row-off"}">
+              <td data-label="الفئة">
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <img src="${c.image ? "../" + esc(c.image) : "../images/logo.jpeg"}" alt="" class="cat-thumb" onerror="this.src='../images/logo.jpeg'" style="width:42px;height:42px;border-radius:8px;object-fit:cover;" />
+                  <strong>${esc(c.name)}</strong>
+                </div>
+              </td>
+              <td data-label="الوصف">${esc(c.description || "—")}</td>
+              <td data-label="الترتيب">${c.display_order}</td>
+              <td data-label="الحالة">${c.is_visible ? '<span class="status-badge completed">ظاهرة</span>' : '<span class="status-badge cancelled">مخفية</span>'}</td>
+              <td data-label="إجراءات">
+                <div class="row-actions">
+                  <button class="mini-btn view" onclick="openCategoryForm(${c.id})">✏️ تعديل</button>
+                  <button class="mini-btn ${c.is_visible ? "hide" : "show"}" onclick="toggleCategory(${c.id}, ${c.is_visible ? "false" : "true"})">${c.is_visible ? "🙈 إخفاء" : "👁 إظهار"}</button>
+                  <button class="mini-btn danger" onclick="deleteCategory(${c.id}, '${esc(c.name).replace(/'/g, "\\'")}')">🗑️</button>
+                </div>
+              </td>
+            </tr>`).join("")}
+        </tbody>
+      </table>`;
+  } catch (err) {
+    handleErr(err);
+  }
+}
+
+function openCategoryForm(id) {
+  const c = id ? CATS_ADMIN.find((x) => x.id === id) : null;
+  pendingCatImage = null;
+  document.getElementById("categoryModalTitle").textContent = c ? `تعديل: ${c.name}` : "إضافة فئة";
+  document.getElementById("categoryModalBody").innerHTML = `
+    <div class="form-group"><label>اسم الفئة *</label>
+      <input type="text" id="cName" value="${c ? esc(c.name) : ""}" placeholder="مثال: دروع وتذكارات"></div>
+    <div class="form-group"><label>الوصف</label>
+      <textarea id="cDesc" rows="2" placeholder="وصف قصير يظهر للعميل">${c ? esc(c.description || "") : ""}</textarea></div>
+    <div class="form-group"><label>صورة الفئة</label>
+      <img id="cImgPreview" class="img-preview" src="${c && c.image ? "../" + esc(c.image) : "../images/logo.jpeg"}" onerror="this.src='../images/logo.jpeg'" style="width:90px;height:90px;border-radius:10px;object-fit:cover;display:block;margin-bottom:8px;" />
+      <input type="file" accept="image/jpeg,image/png,image/webp" onchange="onCatImageChange(this)"></div>
+    <div class="form-row">
+      <div class="form-group"><label>ترتيب العرض</label>
+        <input type="number" id="cOrder" value="${c ? c.display_order : 0}"></div>
+      <div class="form-group"><label>عنوان SEO (اختياري)</label>
+        <input type="text" id="cSeoTitle" value="${c ? esc(c.seo_title || "") : ""}"></div>
+    </div>
+    <label class="toggle-row"><span><strong>ظاهرة في المتجر</strong></span>
+      <span class="switch"><input type="checkbox" id="cVisible" ${!c || c.is_visible ? "checked" : ""}><span class="slider"></span></span></label>
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="cSaveBtn" onclick="saveCategory(${c ? c.id : "null"})">💾 حفظ</button>
+    </div>`;
+  document.getElementById("categoryModal").classList.add("open");
+}
+
+function onCatImageChange(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    pendingCatImage = reader.result;
+    document.getElementById("cImgPreview").src = pendingCatImage;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function saveCategory(id) {
+  const btn = document.getElementById("cSaveBtn");
+  const payload = {
+    name: document.getElementById("cName").value.trim(),
+    description: document.getElementById("cDesc").value.trim(),
+    display_order: Number(document.getElementById("cOrder").value) || 0,
+    seo_title: document.getElementById("cSeoTitle").value.trim(),
+    is_visible: document.getElementById("cVisible").checked,
+  };
+  if (!payload.name) return showToast("اسم الفئة مطلوب", "error");
+  btn.disabled = true;
+  try {
+    if (pendingCatImage) {
+      const up = await api("/api/admin/upload", { method: "POST", body: JSON.stringify({ data: pendingCatImage }) });
+      payload.image = up.path;
+    }
+    await api(id ? `/api/admin/categories?id=${id}` : "/api/admin/categories", {
+      method: id ? "PATCH" : "POST",
+      body: JSON.stringify(payload),
+    });
+    showToast("✅ تم حفظ الفئة");
+    closeModal("categoryModal");
+    loadCategories();
+  } catch (err) {
+    handleErr(err);
+    btn.disabled = false;
+  }
+}
+
+async function toggleCategory(id, visible) {
+  try {
+    await api(`/api/admin/categories?id=${id}`, { method: "PATCH", body: JSON.stringify({ is_visible: visible }) });
+    loadCategories();
+  } catch (err) {
+    handleErr(err);
+  }
+}
+
+async function deleteCategory(id, name) {
+  if (!confirm(`حذف الفئة "${name}"؟ المنتجات المرتبطة بها ستصبح بدون فئة.`)) return;
+  try {
+    await api(`/api/admin/categories?id=${id}`, { method: "DELETE" });
+    showToast("🗑️ تم حذف الفئة");
+    loadCategories();
+  } catch (err) {
+    handleErr(err);
+  }
+}
+
+// ===================================================================
 // عام: النوافذ، الفلاتر، الخروج
 // ===================================================================
 function closeModal(modalId) {
   document.getElementById(modalId).classList.remove("open");
 }
-["orderModal", "productModal", "zoneModal"].forEach((mid) => {
+["orderModal", "productModal", "zoneModal", "categoryModal"].forEach((mid) => {
   document.getElementById(mid).addEventListener("click", (e) => {
     if (e.target === e.currentTarget) closeModal(mid);
   });
