@@ -1,5 +1,5 @@
 // إنشاء طلب من الموقع — الأسعار تُحسب من قاعدة البيانات (أمان) + حفظ المرفقات
-const { getSql, getPool, ensureSchema, getSetting } = require("../_lib/db");
+const { getSql, getPool, ensureSchema, getSetting, resolveShipping } = require("../_lib/db");
 const { sendJSON, readJson, cleanStr, normalizePhone, makeRateLimiter, clientIp } = require("../_lib/util");
 const { offerActive, isOrderable, num } = require("../_lib/serialize");
 
@@ -64,8 +64,11 @@ module.exports = async (req, res) => {
       items.push({ id: p.id, name: p.name, qty, unit });
     }
 
-    const shipping = Number(await getSetting("shipping_fee", "50"));
     const subtotal = items.reduce((s, it) => s + it.unit * it.qty, 0);
+    // رسوم الشحن حسب المحافظة (snapshot يُحفظ في الطلب)
+    const ship = await resolveShipping(city, subtotal);
+    if (ship.disabled) return sendJSON(res, 400, { error: `التوصيل غير متاح حالياً لمحافظة ${city}` });
+    const shipping = ship.fee;
     const total = subtotal + shipping;
 
     // كتابة الطلب داخل معاملة

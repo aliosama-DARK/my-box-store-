@@ -829,6 +829,115 @@ async function loadSettings() {
   } catch (err) {
     handleErr(err);
   }
+  loadShipping();
+}
+
+// ===================================================================
+// الشحن حسب المحافظة
+// ===================================================================
+let ZONES_CACHE = [];
+async function loadShipping() {
+  const wrap = document.getElementById("zonesWrap");
+  try {
+    const { zones } = await api("/api/admin/shipping");
+    ZONES_CACHE = zones;
+    if (!zones.length) {
+      wrap.innerHTML = emptyStateHTML("لا توجد مناطق شحن", "أضف محافظة لتحديد سعر شحنها");
+      return;
+    }
+    wrap.innerHTML = `
+      <table class="orders-table zones-table">
+        <thead><tr>
+          <th>المحافظة</th><th>الشحن</th><th>مدة التوصيل</th><th>شحن مجاني فوق</th><th>الحالة</th><th></th>
+        </tr></thead>
+        <tbody>
+          ${zones.map((z) => `
+            <tr class="${z.enabled ? "" : "row-off"}">
+              <td data-label="المحافظة"><strong>${esc(z.name)}</strong></td>
+              <td data-label="الشحن">${fmtPrice(z.fee)}</td>
+              <td data-label="مدة التوصيل">${esc(z.delivery_time || "—")}</td>
+              <td data-label="شحن مجاني فوق">${z.free_threshold ? fmtPrice(z.free_threshold) : "—"}</td>
+              <td data-label="الحالة">${z.enabled ? '<span class="status-badge completed">مفعّل</span>' : '<span class="status-badge cancelled">معطّل</span>'}</td>
+              <td data-label="إجراءات">
+                <div class="row-actions">
+                  <button class="mini-btn view" onclick="openZoneForm(${z.id})">✏️ تعديل</button>
+                  <button class="mini-btn ${z.enabled ? "hide" : "show"}" onclick="toggleZone(${z.id}, ${z.enabled ? "false" : "true"})">${z.enabled ? "🚫 تعطيل" : "✅ تفعيل"}</button>
+                  <button class="mini-btn danger" onclick="deleteZone(${z.id}, '${esc(z.name).replace(/'/g, "\\'")}')">🗑️</button>
+                </div>
+              </td>
+            </tr>`).join("")}
+        </tbody>
+      </table>`;
+  } catch (err) {
+    handleErr(err);
+  }
+}
+
+function openZoneForm(id) {
+  const z = id ? ZONES_CACHE.find((x) => x.id === id) : null;
+  document.getElementById("zoneModalTitle").textContent = z ? `تعديل: ${z.name}` : "إضافة منطقة شحن";
+  document.getElementById("zoneModalBody").innerHTML = `
+    <div class="form-group"><label>اسم المحافظة / المنطقة *</label>
+      <input type="text" id="zName" value="${z ? esc(z.name) : ""}" placeholder="مثال: القاهرة"></div>
+    <div class="form-row">
+      <div class="form-group"><label>سعر الشحن (ج.م) *</label>
+        <input type="number" id="zFee" min="0" step="1" value="${z ? z.fee : 50}"></div>
+      <div class="form-group"><label>شحن مجاني فوق (اختياري)</label>
+        <input type="number" id="zFree" min="0" step="1" value="${z && z.free_threshold ? z.free_threshold : ""}" placeholder="اتركه فارغاً"></div>
+    </div>
+    <div class="form-group"><label>مدة التوصيل</label>
+      <input type="text" id="zTime" value="${z ? esc(z.delivery_time || "") : "2 – 4 أيام عمل"}" placeholder="مثال: 2 – 4 أيام عمل"></div>
+    <div class="form-group"><label>ملاحظة للعميل (اختياري)</label>
+      <input type="text" id="zNotes" value="${z ? esc(z.notes || "") : ""}" placeholder="تظهر للعميل عند اختيار المحافظة"></div>
+    <label class="toggle-row"><span><strong>مفعّل (متاح للتوصيل)</strong></span>
+      <span class="switch"><input type="checkbox" id="zEnabled" ${!z || z.enabled ? "checked" : ""}><span class="slider"></span></span></label>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="saveZone(${z ? z.id : "null"})">💾 حفظ</button>
+    </div>`;
+  document.getElementById("zoneModal").classList.add("open");
+}
+
+async function saveZone(id) {
+  const payload = {
+    name: document.getElementById("zName").value.trim(),
+    fee: Number(document.getElementById("zFee").value),
+    free_threshold: document.getElementById("zFree").value === "" ? null : Number(document.getElementById("zFree").value),
+    delivery_time: document.getElementById("zTime").value.trim(),
+    notes: document.getElementById("zNotes").value.trim(),
+    enabled: document.getElementById("zEnabled").checked,
+  };
+  if (!payload.name) return showToast("اسم المحافظة مطلوب", "error");
+  try {
+    await api(id ? `/api/admin/shipping?id=${id}` : "/api/admin/shipping", {
+      method: id ? "PATCH" : "POST",
+      body: JSON.stringify(payload),
+    });
+    showToast("✅ تم حفظ منطقة الشحن");
+    closeModal("zoneModal");
+    loadShipping();
+  } catch (err) {
+    handleErr(err);
+  }
+}
+
+async function toggleZone(id, enable) {
+  try {
+    await api(`/api/admin/shipping?id=${id}`, { method: "PATCH", body: JSON.stringify({ enabled: enable }) });
+    loadShipping();
+  } catch (err) {
+    handleErr(err);
+  }
+}
+
+async function deleteZone(id, name) {
+  if (!confirm(`حذف منطقة الشحن "${name}"؟`)) return;
+  try {
+    await api(`/api/admin/shipping?id=${id}`, { method: "DELETE" });
+    showToast("🗑️ تم حذف المنطقة");
+    loadShipping();
+  } catch (err) {
+    handleErr(err);
+  }
 }
 
 async function saveSettings() {
@@ -853,7 +962,7 @@ async function saveSettings() {
 function closeModal(modalId) {
   document.getElementById(modalId).classList.remove("open");
 }
-["orderModal", "productModal"].forEach((mid) => {
+["orderModal", "productModal", "zoneModal"].forEach((mid) => {
   document.getElementById(mid).addEventListener("click", (e) => {
     if (e.target === e.currentTarget) closeModal(mid);
   });

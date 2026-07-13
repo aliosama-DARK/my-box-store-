@@ -249,6 +249,65 @@ module.exports = async (req, res) => {
       return sendJSON(res, 405, { error: "method not allowed" });
     }
 
+    // ---------- مناطق الشحن ----------
+    if (action === "shipping") {
+      if (id !== null) {
+        if (!Number.isInteger(id)) return sendJSON(res, 400, { error: "معرّف غير صالح" });
+        if (method === "PATCH") {
+          const b = await readJson(req);
+          const sets = [], params = [];
+          let i = 1;
+          const set = (c, v) => { sets.push(`${c} = $${i}`); params.push(v); i++; };
+          if (b.name !== undefined) { const n = cleanStr(b.name, 80); if (!n) return sendJSON(res, 400, { error: "اسم المنطقة مطلوب" }); set("name", n); }
+          if (b.fee !== undefined) { const f = Number(b.fee); if (!(f >= 0)) return sendJSON(res, 400, { error: "سعر شحن غير صالح" }); set("fee", f); }
+          if (b.delivery_time !== undefined) set("delivery_time", cleanStr(b.delivery_time, 60));
+          if (b.enabled !== undefined) set("enabled", toBool(b.enabled));
+          if (b.free_threshold !== undefined) {
+            const t = b.free_threshold === null || b.free_threshold === "" ? null : Number(b.free_threshold);
+            if (t !== null && !(t >= 0)) return sendJSON(res, 400, { error: "حد الشحن المجاني غير صالح" });
+            set("free_threshold", t);
+          }
+          if (b.notes !== undefined) set("notes", cleanStr(b.notes, 300));
+          if (b.internal_notes !== undefined) set("internal_notes", cleanStr(b.internal_notes, 500));
+          if (b.display_order !== undefined) set("display_order", Math.floor(Number(b.display_order)) || 0);
+          if (!sets.length) return sendJSON(res, 400, { error: "لا يوجد ما يتم تحديثه" });
+          sets.push("updated_at = now()");
+          params.push(id);
+          const pool = getPool();
+          try { await pool.query(`UPDATE shipping_zones SET ${sets.join(", ")} WHERE id = $${i}`, params); }
+          catch (e) { return sendJSON(res, 400, { error: "تعذّر التحديث (ربما الاسم مكرر)" }); }
+          finally { await pool.end(); }
+          const z = (await sql`SELECT * FROM shipping_zones WHERE id = ${id}`)[0];
+          return sendJSON(res, 200, { ok: true, zone: z });
+        }
+        if (method === "DELETE") {
+          await sql`DELETE FROM shipping_zones WHERE id = ${id}`;
+          return sendJSON(res, 200, { ok: true });
+        }
+        return sendJSON(res, 405, { error: "method not allowed" });
+      }
+      if (method === "GET")
+        return sendJSON(res, 200, { zones: await sql`SELECT * FROM shipping_zones ORDER BY display_order ASC, id ASC` });
+      if (method === "POST") {
+        const b = await readJson(req);
+        const name = cleanStr(b.name, 80);
+        if (!name) return sendJSON(res, 400, { error: "اسم المنطقة مطلوب" });
+        const fee = Number(b.fee) || 0;
+        if (!(fee >= 0)) return sendJSON(res, 400, { error: "سعر شحن غير صالح" });
+        const dt = cleanStr(b.delivery_time || "2 – 4 أيام عمل", 60);
+        const enabled = b.enabled === undefined ? true : toBool(b.enabled);
+        const thr = b.free_threshold === null || b.free_threshold === undefined || b.free_threshold === "" ? null : Number(b.free_threshold);
+        const notes = cleanStr(b.notes || "", 300);
+        const maxo = (await sql`SELECT COALESCE(MAX(display_order),0)::int AS m FROM shipping_zones`)[0].m;
+        try {
+          const z = (await sql`INSERT INTO shipping_zones (name,fee,delivery_time,enabled,free_threshold,notes,display_order,created_at,updated_at)
+            VALUES (${name}, ${fee}, ${dt}, ${enabled}, ${thr}, ${notes}, ${maxo + 1}, now(), now()) RETURNING *`)[0];
+          return sendJSON(res, 201, { ok: true, zone: z });
+        } catch (e) { return sendJSON(res, 400, { error: "تعذّر الإضافة (ربما الاسم مكرر)" }); }
+      }
+      return sendJSON(res, 405, { error: "method not allowed" });
+    }
+
     return sendJSON(res, 404, { error: "غير موجود" });
   } catch (e) {
     sendJSON(res, 500, { error: "تعذّر تنفيذ العملية" });

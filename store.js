@@ -8,7 +8,7 @@ const CART_KEY = "myboxstore_cart";
 
 // ===== حالة المتجر (تُجلب من السيرفر) =====
 let PRODUCTS = [];
-let SETTINGS = { whatsapp_order_enabled: false, shipping_fee: 50, store_phone: "" };
+let SETTINGS = { whatsapp_order_enabled: false, shipping_fee: 50, store_phone: "", shipping_zones: [] };
 let STATIC_MODE = false; // استضافة ثابتة (GitHub Pages): منتجات من snapshot + طلب واتساب
 let _storeLoaded = null;
 
@@ -107,6 +107,19 @@ function removeFromCart(productId) {
 
 function formatPrice(n) {
   return Number(n).toLocaleString("ar-EG") + " ج.م";
+}
+
+// ===== الشحن حسب المحافظة =====
+function getZone(name) {
+  return (SETTINGS.shipping_zones || []).find((z) => z.name === name) || null;
+}
+// يعيد { fee, free, zone } — يطابق منطق الخادم
+function computeShipping(subtotal, cityName) {
+  const z = getZone(cityName);
+  if (!z) return { fee: Number(SETTINGS.shipping_fee) || 0, free: false, zone: null };
+  if (z.free_threshold && z.free_threshold > 0 && subtotal >= z.free_threshold)
+    return { fee: 0, free: true, zone: z };
+  return { fee: Number(z.fee) || 0, free: false, zone: z };
 }
 
 // ===== التوست =====
@@ -384,8 +397,8 @@ async function renderCart() {
         <h3>ملخص الطلب</h3>
         ${blocked.length ? `<p class="unavailable-text" style="font-size:0.85rem;">⚠️ ${blocked.length} منتج غير متوفر لن يُحتسب</p>` : ""}
         <div class="summary-row"><span>الإجمالي الفرعي</span><span>${formatPrice(subtotal)}</span></div>
-        <div class="summary-row"><span>الشحن</span><span>${formatPrice(SETTINGS.shipping_fee)}</span></div>
-        <div class="summary-row total"><span>الإجمالي</span><span>${formatPrice(total)}</span></div>
+        <div class="summary-row"><span>الشحن</span><span>يُحسب حسب المحافظة</span></div>
+        <div class="summary-row total"><span>الإجمالي</span><span style="font-size:0.98rem;color:var(--muted);font-weight:700;">يظهر بعد اختيار المحافظة</span></div>
         <button class="btn btn-primary" onclick="openCheckout()" ${orderable.length ? "" : "disabled"}>إتمام الطلب</button>
         ${SETTINGS.whatsapp_order_enabled && orderable.length
           ? `<button class="btn btn-whatsapp" onclick="orderCartViaWhatsApp()">💬 أو اطلب عبر واتساب (اختياري)</button>`
@@ -560,6 +573,11 @@ function openCheckout() {
   const staticNote = STATIC_MODE
     ? `<p class="field-hint" style="color:var(--danger);">⚠️ رفع الصور يتطلّب تشغيل الموقع على سيرفر المتجر. حالياً سيُرسَل الطلب عبر واتساب بدون الصور.</p>`
     : "";
+  const zones = SETTINGS.shipping_zones || [];
+  const cityOptions = zones.length
+    ? zones.map((z) => `<option value="${escapeHTML(z.name)}">${escapeHTML(z.name)}</option>`).join("")
+    : ["القاهرة", "الجيزة", "الإسكندرية", "الدقهلية", "الشرقية", "الغربية", "أخرى"]
+        .map((c) => `<option>${c}</option>`).join("");
 
   sec.innerHTML = `
     <section style="padding:40px 0 0;">
@@ -604,20 +622,17 @@ function openCheckout() {
             <label for="ckCity">المحافظة / المدينة<span class="req-star">*</span></label>
             <select id="ckCity" name="city" required>
               <option value="">اختر المحافظة</option>
-              <option>القاهرة</option><option>الجيزة</option><option>الإسكندرية</option>
-              <option>الدقهلية</option><option>الشرقية</option><option>الغربية</option>
-              <option>القليوبية</option><option>المنوفية</option><option>البحيرة</option>
-              <option>بورسعيد</option><option>السويس</option><option>أسيوط</option>
-              <option>المنيا</option><option>سوهاج</option><option>قنا</option><option>أسوان</option>
-              <option>أخرى</option>
+              ${cityOptions}
             </select>
             <span class="field-error" data-for="ckCity"></span>
+            <span class="field-hint" id="ckShipHint"></span>
           </div>
           <div class="form-group">
             <label for="ckAddress">العنوان بالتفصيل<span class="req-star">*</span></label>
             <textarea id="ckAddress" name="address" required rows="3" placeholder="الشارع، رقم العمارة، الدور، الشقة، علامة مميزة قريبة"></textarea>
             <span class="field-error" data-for="ckAddress"></span>
           </div>
+          <div class="checkout-live-summary" id="ckSummary" aria-live="polite"></div>
         </div>
 
         <!-- 3) تفاصيل الطباعة والطلب -->
@@ -677,6 +692,37 @@ function openCheckout() {
   // ربط الأحداث
   const form = document.getElementById("checkoutForm");
   form.addEventListener("submit", (e) => { e.preventDefault(); openReview(); });
+
+  // ملخص حي للشحن/الإجمالي حسب المحافظة
+  const citySel = document.getElementById("ckCity");
+  const shipHint = document.getElementById("ckShipHint");
+  const ckSummary = document.getElementById("ckSummary");
+  function updateCkSummary() {
+    const detailed = cartDetailed().filter((p) => p.orderable);
+    const subtotal = detailed.reduce((s, p) => s + p.price * p.qty, 0);
+    const city = citySel.value;
+    if (!city) {
+      shipHint.textContent = "";
+      ckSummary.innerHTML = `
+        <div class="cls-row"><span>الإجمالي الفرعي</span><span>${formatPrice(subtotal)}</span></div>
+        <div class="cls-row"><span>الشحن</span><span>اختر المحافظة لحساب الشحن</span></div>`;
+      return;
+    }
+    const ship = computeShipping(subtotal, city);
+    const z = ship.zone;
+    let hint = "";
+    if (z && z.delivery_time) hint = `⏱️ التوصيل المتوقع: ${z.delivery_time}`;
+    if (ship.free) hint += (hint ? " • " : "") + "🎉 شحن مجاني!";
+    else if (z && z.free_threshold) hint += (hint ? " • " : "") + `شحن مجاني عند ${formatPrice(z.free_threshold)}`;
+    if (z && z.notes) hint += (hint ? " • " : "") + z.notes;
+    shipHint.textContent = hint;
+    ckSummary.innerHTML = `
+      <div class="cls-row"><span>الإجمالي الفرعي</span><span>${formatPrice(subtotal)}</span></div>
+      <div class="cls-row"><span>الشحن (${escapeHTML(city)})</span><span>${ship.free ? "مجاني" : formatPrice(ship.fee)}</span></div>
+      <div class="cls-row cls-total"><span>الإجمالي</span><span>${formatPrice(subtotal + ship.fee)}</span></div>`;
+  }
+  citySel.addEventListener("change", updateCkSummary);
+  updateCkSummary();
 
   const notes = document.getElementById("ckNotes");
   const notesCounter = document.getElementById("notesCounter");
@@ -757,8 +803,10 @@ function openReview() {
   if (detailed.length === 0) { showToast("⚠️ لا توجد منتجات متاحة في سلتك"); return; }
 
   const subtotal = detailed.reduce((s, p) => s + p.price * p.qty, 0);
-  const total = subtotal + SETTINGS.shipping_fee;
-  _reviewData = { info, detailed, subtotal, total };
+  const ship = computeShipping(subtotal, info.city);
+  const shipping = ship.fee;
+  const total = subtotal + shipping;
+  _reviewData = { info, detailed, subtotal, shipping, total };
 
   const overlay = document.createElement("div");
   overlay.className = "review-overlay";
@@ -777,7 +825,7 @@ function openReview() {
         </div>
         <div class="review-section">
           <div class="review-line"><span class="rk">الإجمالي الفرعي</span><span>${formatPrice(subtotal)}</span></div>
-          <div class="review-line"><span class="rk">الشحن</span><span>${formatPrice(SETTINGS.shipping_fee)}</span></div>
+          <div class="review-line"><span class="rk">الشحن${info.city ? " (" + escapeHTML(info.city) + ")" : ""}</span><span>${ship.free ? "مجاني 🎉" : formatPrice(shipping)}</span></div>
           <div class="review-total"><span>الإجمالي</span><span>${formatPrice(total)}</span></div>
         </div>
         <div class="review-section">
@@ -926,7 +974,8 @@ function copyOrderNumber(num, btn) {
 // إرسال الطلب عبر واتساب (وضع الاستضافة الثابتة فقط)
 function submitOrderViaWhatsApp(info, detailed) {
   const subtotal = detailed.reduce((s, p) => s + p.price * p.qty, 0);
-  const total = subtotal + SETTINGS.shipping_fee;
+  const shipping = computeShipping(subtotal, info.city).fee;
+  const total = subtotal + shipping;
 
   let msg = "🛍️ *طلب جديد من MY BOX STORE*\n—————————————\n";
   msg += `👤 الاسم: ${info.name}\n`;
@@ -938,7 +987,7 @@ function submitOrderViaWhatsApp(info, detailed) {
   detailed.forEach((p, i) => {
     msg += `${i + 1}- ${p.name} × ${p.qty} = ${formatPrice(p.price * p.qty)}\n`;
   });
-  msg += `—————————————\nالشحن: ${formatPrice(SETTINGS.shipping_fee)}\n💰 *الإجمالي: ${formatPrice(total)}*\n💵 الدفع عند الاستلام`;
+  msg += `—————————————\nالشحن: ${formatPrice(shipping)}\n💰 *الإجمالي: ${formatPrice(total)}*\n💵 الدفع عند الاستلام`;
 
   const waUrl = `https://wa.me/${SETTINGS.store_phone}?text=${encodeURIComponent(msg)}`;
   window.open(waUrl, "_blank");

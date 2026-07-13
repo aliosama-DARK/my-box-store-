@@ -1264,6 +1264,32 @@ section { padding: 72px 0; }
 .char-counter.limit { color: var(--danger); font-weight: 700; }
 textarea.print-details { min-height: 130px; resize: vertical; line-height: 1.7; }
 
+/* ===== ملخص الشحن الحي في الشيك أوت ===== */
+.checkout-live-summary {
+  margin-top: 14px;
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 16px;
+}
+.cls-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+  font-size: 0.92rem;
+  color: var(--ink-soft);
+}
+.cls-row.cls-total {
+  border-top: 1px solid var(--line);
+  margin-top: 6px;
+  padding-top: 10px;
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: var(--ink);
+}
+.cls-row.cls-total span:last-child { color: var(--brass-deep); }
+
 /* ===== طريقة الدفع ===== */
 .pay-method {
   display: flex;

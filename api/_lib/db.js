@@ -48,6 +48,18 @@ const SEED_PRODUCTS = [
     specs: [["الخامة", "سيراميك عالي الجودة"], ["السعة", "330 مل"], ["التخصيص", "طباعة بانورامية بصورتك / تصميمك"], ["مدة التنفيذ", "1 – 3 أيام عمل"]] },
 ];
 
+// المحافظات المصرية مع رسوم شحن افتراضية (قابلة للتعديل من الداشبورد)
+const SHIPPING_SEED = [
+  ["القاهرة", 50], ["الجيزة", 50], ["القليوبية", 55],
+  ["الإسكندرية", 60], ["الدقهلية", 60], ["الشرقية", 60], ["الغربية", 60],
+  ["المنوفية", 60], ["البحيرة", 60], ["كفر الشيخ", 65], ["دمياط", 65],
+  ["بورسعيد", 65], ["الإسماعيلية", 65], ["السويس", 65],
+  ["بني سويف", 75], ["الفيوم", 75], ["المنيا", 75], ["أسيوط", 80],
+  ["سوهاج", 80], ["قنا", 85], ["الأقصر", 85], ["أسوان", 90],
+  ["البحر الأحمر", 95], ["الوادي الجديد", 100], ["مطروح", 95],
+  ["شمال سيناء", 100], ["جنوب سيناء", 100],
+];
+
 let _schemaPromise = null;
 function ensureSchema() {
   if (_schemaPromise) return _schemaPromise;
@@ -88,6 +100,11 @@ function ensureSchema() {
       original_filename TEXT, storage_path TEXT NOT NULL, url TEXT NOT NULL,
       mime_type TEXT, file_size INT, created_at TIMESTAMPTZ NOT NULL DEFAULT now())`;
     await sql`CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)`;
+    await sql`CREATE TABLE IF NOT EXISTS shipping_zones (
+      id SERIAL PRIMARY KEY, name TEXT UNIQUE NOT NULL, fee NUMERIC NOT NULL DEFAULT 0,
+      delivery_time TEXT, enabled BOOLEAN NOT NULL DEFAULT true, free_threshold NUMERIC,
+      notes TEXT, internal_notes TEXT NOT NULL DEFAULT '', display_order INT NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now())`;
     await sql`CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_items_order ON order_items(order_id)`;
@@ -123,6 +140,16 @@ function ensureSchema() {
       }
     }
 
+    // مناطق الشحن الأولية (المحافظات المصرية)
+    const zoneCount = (await sql`SELECT COUNT(*)::int AS c FROM shipping_zones`)[0].c;
+    if (zoneCount === 0) {
+      let o = 1;
+      for (const [name, fee] of SHIPPING_SEED) {
+        await sql`INSERT INTO shipping_zones (name, fee, delivery_time, enabled, display_order, created_at, updated_at)
+          VALUES (${name}, ${fee}, ${"2 – 4 أيام عمل"}, true, ${o++}, now(), now())`;
+      }
+    }
+
     // حساب الأدمن (من متغيّرات البيئة فقط — لا يُخزَّن في الكود)
     const email = (process.env.ADMIN_EMAIL || "").trim().toLowerCase();
     const pass = process.env.ADMIN_PASSWORD || "";
@@ -153,4 +180,30 @@ async function setSetting(key, value) {
     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`;
 }
 
-module.exports = { getSql, getPool, ensureSchema, getSetting, setSetting };
+// مناطق الشحن
+async function listShippingZones(enabledOnly = false) {
+  const sql = getSql();
+  return enabledOnly
+    ? await sql`SELECT * FROM shipping_zones WHERE enabled = true ORDER BY display_order ASC, id ASC`
+    : await sql`SELECT * FROM shipping_zones ORDER BY display_order ASC, id ASC`;
+}
+// حساب رسوم الشحن حسب المحافظة (مع حد الشحن المجاني) — المصدر الموثوق وقت الطلب
+// المطابقة تتم في JS مع تطبيع Unicode (NFC) لتفادي اختلاف تمثيل الحروف العربية
+async function resolveShipping(city, subtotal) {
+  const sql = getSql();
+  const norm = (s) => String(s || "").normalize("NFC").trim();
+  const target = norm(city);
+  const zones = await sql`SELECT * FROM shipping_zones`;
+  const z = zones.find((x) => norm(x.name) === target);
+  if (z && !z.enabled) return { disabled: true, fee: 0, name: city };
+  let fee;
+  if (z) {
+    const thr = z.free_threshold == null ? null : Number(z.free_threshold);
+    fee = thr != null && thr > 0 && subtotal >= thr ? 0 : Number(z.fee);
+  } else {
+    fee = Number(await getSetting("shipping_fee", "50"));
+  }
+  return { disabled: false, fee, name: z ? z.name : city };
+}
+
+module.exports = { getSql, getPool, ensureSchema, getSetting, setSetting, listShippingZones, resolveShipping };
