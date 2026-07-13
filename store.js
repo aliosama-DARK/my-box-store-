@@ -1129,6 +1129,22 @@ function submitOrderViaWhatsApp(info, detailed) {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
+// ===== حقن محتوى الموقع القابل للإدارة (من الإعدادات) =====
+function applyContent() {
+  const c = (SETTINGS && SETTINGS.content) || {};
+  document.querySelectorAll("[data-cms]").forEach((el) => {
+    const v = c[el.dataset.cms];
+    if (v != null && v !== "") el.textContent = v;
+  });
+  document.querySelectorAll("[data-cms-href]").forEach((el) => {
+    const key = el.dataset.cmsHref;
+    let v = c[key];
+    if (key === "whatsapp") v = SETTINGS.store_phone ? `https://wa.me/${SETTINGS.store_phone}` : "";
+    if (v) { el.href = v; }
+    else if (key === "instagram") { const li = el.closest("li"); (li || el).style.display = "none"; }
+  });
+}
+
 // ===== قائمة الموبايل =====
 function toggleMenu() {
   document.querySelector(".nav")?.classList.toggle("open");
@@ -1294,4 +1310,5 @@ document.addEventListener("DOMContentLoaded", () => {
   initTheme();
   updateCartCount();
   initReveal();
+  loadStore().then(applyContent).catch(() => {});
 });

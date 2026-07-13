@@ -219,6 +219,17 @@
           <p class="hint" style="margin-top:10px;">💡 "مصاريف الشحن" أعلاه تُستخدم كقيمة افتراضية فقط للمحافظات غير المُدرَجة أدناه.</p>
         </div>
 
+        <div class="panel" style="max-width:560px;margin-top:22px;">
+          <h2 class="panel-title">🏷️ محتوى الموقع والتواصل</h2>
+          <div class="hint" style="margin-bottom:12px;">تظهر هذه البيانات في المتجر (الفوتر وروابط التواصل) تلقائياً.</div>
+          <div class="form-group"><label>اسم المتجر</label><input type="text" id="setStoreName"></div>
+          <div class="form-group"><label>رابط فيسبوك</label><input type="url" id="setFacebook" dir="ltr" placeholder="https://facebook.com/..."></div>
+          <div class="form-group"><label>رابط إنستجرام</label><input type="url" id="setInstagram" dir="ltr" placeholder="https://instagram.com/..."></div>
+          <div class="form-group"><label>العنوان</label><input type="text" id="setAddress" placeholder="مثال: القاهرة، مصر"></div>
+          <div class="form-group"><label>نبذة تظهر في أسفل الموقع</label><textarea id="setFooterAbout" rows="2"></textarea></div>
+          <button class="btn btn-primary" style="width:auto;" onclick="saveSettings()">💾 حفظ المحتوى</button>
+        </div>
+
         <div class="panel" style="margin-top:22px;">
           <h2 class="panel-title">
             🚚 الشحن حسب المحافظة

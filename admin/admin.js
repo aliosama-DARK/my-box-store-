@@ -884,6 +884,11 @@ async function loadSettings() {
     document.getElementById("setWaEnabled").checked = !!s.whatsapp_order_enabled;
     document.getElementById("setShipping").value = s.shipping_fee;
     document.getElementById("setStorePhone").value = s.store_phone;
+    document.getElementById("setStoreName").value = s.store_name || "";
+    document.getElementById("setFacebook").value = s.contact_facebook || "";
+    document.getElementById("setInstagram").value = s.contact_instagram || "";
+    document.getElementById("setAddress").value = s.contact_address || "";
+    document.getElementById("setFooterAbout").value = s.footer_about || "";
   } catch (err) {
     handleErr(err);
   }
@@ -1006,6 +1011,11 @@ async function saveSettings() {
         whatsapp_order_enabled: document.getElementById("setWaEnabled").checked ? 1 : 0,
         shipping_fee: Number(document.getElementById("setShipping").value),
         store_phone: document.getElementById("setStorePhone").value.trim(),
+        store_name: document.getElementById("setStoreName").value.trim(),
+        contact_facebook: document.getElementById("setFacebook").value.trim(),
+        contact_instagram: document.getElementById("setInstagram").value.trim(),
+        contact_address: document.getElementById("setAddress").value.trim(),
+        footer_about: document.getElementById("setFooterAbout").value.trim(),
       }),
     });
     showToast("✅ تم حفظ الإعدادات بنجاح");

@@ -128,6 +128,11 @@ module.exports = async (req, res) => {
         whatsapp_order_enabled: (await getSetting("whatsapp_order_enabled", "1")) === "1",
         shipping_fee: Number(await getSetting("shipping_fee", "50")),
         store_phone: await getSetting("store_phone", ""),
+        store_name: await getSetting("store_name", "MY BOX STORE"),
+        contact_facebook: await getSetting("contact_facebook", ""),
+        contact_instagram: await getSetting("contact_instagram", ""),
+        contact_address: await getSetting("contact_address", "مصر"),
+        footer_about: await getSetting("footer_about", ""),
       });
       if (method === "GET") return sendJSON(res, 200, await cur());
       if (method === "PATCH") {
@@ -144,6 +149,11 @@ module.exports = async (req, res) => {
           if (!/^[0-9]{10,15}$/.test(ph)) return sendJSON(res, 400, { error: "رقم واتساب غير صحيح" });
           await setSetting("store_phone", ph);
         }
+        if (body.store_name !== undefined) await setSetting("store_name", cleanStr(body.store_name, 80));
+        if (body.contact_facebook !== undefined) await setSetting("contact_facebook", cleanStr(body.contact_facebook, 300));
+        if (body.contact_instagram !== undefined) await setSetting("contact_instagram", cleanStr(body.contact_instagram, 300));
+        if (body.contact_address !== undefined) await setSetting("contact_address", cleanStr(body.contact_address, 200));
+        if (body.footer_about !== undefined) await setSetting("footer_about", cleanStr(body.footer_about, 500));
         return sendJSON(res, 200, await cur());
       }
       return sendJSON(res, 405, { error: "method not allowed" });
