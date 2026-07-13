@@ -821,3 +821,15 @@ tr.row-hidden:hover { opacity: 0.85; }
 
 /* صفوف مناطق الشحن المعطّلة */
 .zones-table tr.row-off { opacity: 0.55; }
+
+/* صفوف خيارات المنتج (مقاسات/خامات) في نموذج الأدمن */
+.opt-list { display: flex; flex-direction: column; gap: 8px; margin: 10px 0; }
+.opt-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.opt-row .opt-name { flex: 2; min-width: 130px; }
+.opt-row .opt-price { width: 90px; }
+.opt-row .opt-desc { flex: 2; min-width: 130px; }
+.opt-row input[type="text"], .opt-row input[type="number"] {
+  padding: 9px 11px; border: 1px solid var(--border); border-radius: 8px;
+  font-family: inherit; font-size: 0.9rem; background: var(--surface); color: var(--text);
+}
+.opt-row .opt-avail { display: flex; align-items: center; gap: 4px; white-space: nowrap; font-size: 0.85rem; color: var(--muted); }

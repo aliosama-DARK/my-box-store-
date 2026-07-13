@@ -59,6 +59,23 @@ function validateProductBody(body, partial = false) {
     const arr = Array.isArray(body.variations) ? body.variations : [];
     out.variations = arr.slice(0, 30).map((v) => cleanStr(v, 60)).filter(Boolean);
   }
+  if (has("sizes")) {
+    const arr = Array.isArray(body.sizes) ? body.sizes : [];
+    out.sizes = arr.slice(0, 40).map((s) => ({
+      name: cleanStr(s && s.name, 60),
+      price_delta: Number(s && s.price_delta) || 0,
+      available: !(s && s.available === false),
+    })).filter((s) => s.name);
+  }
+  if (has("materials")) {
+    const arr = Array.isArray(body.materials) ? body.materials : [];
+    out.materials = arr.slice(0, 40).map((m) => ({
+      name: cleanStr(m && m.name, 60),
+      price_delta: Number(m && m.price_delta) || 0,
+      available: !(m && m.available === false),
+      desc: cleanStr(m && m.desc, 160),
+    })).filter((m) => m.name);
+  }
   if (has("is_visible")) out.is_visible = toBool(body.is_visible);
   if (has("is_featured")) out.is_featured = toBool(body.is_featured);
   if (has("display_order")) out.display_order = Math.floor(Number(body.display_order)) || 0;

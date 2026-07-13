@@ -242,6 +242,8 @@ module.exports = async (req, res) => {
           if (out.images !== undefined) set("images", JSON.stringify(out.images), "::jsonb");
           if (out.specifications !== undefined) set("specifications", JSON.stringify(out.specifications), "::jsonb");
           if (out.variations !== undefined) set("variations", JSON.stringify(out.variations), "::jsonb");
+          if (out.sizes !== undefined) set("sizes", JSON.stringify(out.sizes), "::jsonb");
+          if (out.materials !== undefined) set("materials", JSON.stringify(out.materials), "::jsonb");
           if (out.is_visible !== undefined) set("is_visible", out.is_visible);
           if (out.is_featured !== undefined) set("is_featured", out.is_featured);
           if (out.display_order !== undefined) set("display_order", out.display_order);
@@ -284,11 +286,12 @@ module.exports = async (req, res) => {
         const maxSort = (await sql`SELECT COALESCE(MAX(display_order),0)::int AS m FROM products`)[0].m;
         const row = (await sql`INSERT INTO products
           (category_id,name,slug,short_description,full_description,price,sale_price,offer_start_date,offer_end_date,
-           stock_status,quantity,images,specifications,variations,is_visible,is_featured,internal_notes,display_order,created_at,updated_at)
+           stock_status,quantity,images,specifications,variations,sizes,materials,is_visible,is_featured,internal_notes,display_order,created_at,updated_at)
           VALUES (${out.category_id || null}, ${out.name}, ${out.slug}, ${out.short_description || null}, ${out.full_description || null},
            ${out.price}, ${out.sale_price ?? null}, ${out.offer_start_date || null}, ${out.offer_end_date || null},
            ${out.stock_status || "in_stock"}, ${out.quantity ?? null}, ${JSON.stringify(out.images || [])}::jsonb,
            ${JSON.stringify(out.specifications || [])}::jsonb, ${JSON.stringify(out.variations || [])}::jsonb,
+           ${JSON.stringify(out.sizes || [])}::jsonb, ${JSON.stringify(out.materials || [])}::jsonb,
            ${out.is_visible ?? true}, ${out.is_featured ?? false}, ${out.internal_notes || ""}, ${out.display_order ?? maxSort + 1}, now(), now())
           RETURNING id`)[0];
         const full = (await sql`SELECT p.*, c.key AS category_key, c.name AS category_name

@@ -99,6 +99,11 @@ function ensureSchema() {
       id SERIAL PRIMARY KEY, order_id INT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
       product_id INT, product_name TEXT NOT NULL, variation TEXT,
       quantity INT NOT NULL, unit_price NUMERIC NOT NULL, total_price NUMERIC NOT NULL)`;
+    // خيارات المنتج (مقاسات/خامات) + snapshot الخيارات المختارة في الطلب
+    await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS sizes JSONB NOT NULL DEFAULT '[]'::jsonb`;
+    await sql`ALTER TABLE products ADD COLUMN IF NOT EXISTS materials JSONB NOT NULL DEFAULT '[]'::jsonb`;
+    await sql`ALTER TABLE order_items ADD COLUMN IF NOT EXISTS selected_size TEXT`;
+    await sql`ALTER TABLE order_items ADD COLUMN IF NOT EXISTS selected_material TEXT`;
     await sql`CREATE TABLE IF NOT EXISTS order_attachments (
       id SERIAL PRIMARY KEY, order_id INT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
       original_filename TEXT, storage_path TEXT NOT NULL, url TEXT NOT NULL,

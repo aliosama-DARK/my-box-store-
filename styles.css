@@ -973,6 +973,31 @@ section { padding: 72px 0; }
   font-size: 0.92rem;
   font-weight: 600;
 }
+/* ===== خيارات المنتج (مقاسات/خامات) ===== */
+.opt-group { margin: 18px 0; }
+.opt-group-label { font-weight: 700; margin-bottom: 9px; font-size: 0.98rem; }
+.opt-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.opt-chip {
+  border: 1.5px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 9px 17px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: border-color 0.15s, background 0.15s, color 0.15s, transform 0.12s;
+}
+.opt-chip small { color: var(--brass-deep); font-weight: 700; }
+.opt-chip:hover:not(.disabled) { border-color: var(--brass); transform: translateY(-1px); }
+.opt-chip.active { background: var(--brand-gradient); color: var(--on-accent); border-color: transparent; }
+.opt-chip.active small { color: var(--on-accent); }
+.opt-chip.disabled { opacity: 0.4; cursor: not-allowed; text-decoration: line-through; }
+.opt-desc-line { font-size: 0.85rem; color: var(--ink-soft); margin-top: 7px; }
+.cart-item-opts { font-size: 0.82rem; color: var(--brass-deep); margin: 2px 0; font-weight: 600; }
+.btn-primary:disabled { opacity: 0.55; cursor: not-allowed; transform: none; box-shadow: none; filter: grayscale(0.3); }
+
 .discount-chip {
   display: inline-block;
   background: color-mix(in srgb, var(--brass) 16%, transparent);

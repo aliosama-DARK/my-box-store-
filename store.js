@@ -73,35 +73,47 @@ function updateCartCount() {
   });
 }
 
-function addToCart(productId, qty = 1) {
+// مفتاح السطر يميّز نفس المنتج بخيارات مختلفة (مقاس/خامة)
+function lineKey(it) {
+  return `${it.id}|${it.size || ""}|${it.material || ""}`;
+}
+function optionDelta(p, kind, name) {
+  if (!name || !p || !Array.isArray(p[kind])) return 0;
+  const found = p[kind].find((o) => o.name === name);
+  return found ? Number(found.price_delta) || 0 : 0;
+}
+
+function addToCart(productId, qty = 1, opts = {}) {
   const p = PRODUCTS.find((x) => x.id === productId);
   if (p && !p.orderable) {
     showToast("⚠️ هذا المنتج غير متوفر حاليًا");
     return;
   }
+  const item = { id: productId, qty, size: opts.size || null, material: opts.material || null };
   const cart = getCart();
-  const existing = cart.find((i) => i.id === productId);
+  const existing = cart.find((i) => lineKey(i) === lineKey(item));
   if (existing) existing.qty += qty;
-  else cart.push({ id: productId, qty });
+  else cart.push(item);
   saveCart(cart);
   if (p) showToast(`✅ تمت إضافة "${p.name}" للسلة`);
 }
 
-function changeQty(productId, delta) {
+function changeQty(key, delta) {
   const cart = getCart();
-  const item = cart.find((i) => i.id === productId);
+  const item = cart.find((i) => lineKey(i) === key);
   if (!item) return;
   item.qty += delta;
   if (item.qty <= 0) {
-    removeFromCart(productId);
+    saveCart(cart.filter((i) => lineKey(i) !== key));
+    renderCart();
     return;
   }
   saveCart(cart);
   renderCart();
 }
 
-function removeFromCart(productId) {
-  saveCart(getCart().filter((i) => i.id !== productId));
+function removeFromCart(key) {
+  saveCart(getCart().filter((i) => lineKey(i) !== key));
   renderCart();
 }
 
@@ -261,19 +273,27 @@ async function renderProductDetail() {
   if (p.offer_active) badge = `<span class="product-badge badge-offer" style="position:static;display:inline-block;margin-bottom:10px;">خصم ${p.discount_percent}%</span>`;
   else if (p.is_featured) badge = `<span class="product-badge" style="position:static;display:inline-block;margin-bottom:10px;">⭐ مميز</span>`;
 
-  const priceBlock = p.offer_active
-    ? `<div class="detail-price"><small>${formatPrice(p.regular_price)}</small>${formatPrice(p.sale_price)} <span class="discount-chip">وفّرت ${p.discount_percent}%</span></div>`
-    : `<div class="detail-price">${formatPrice(p.regular_price)}</div>`;
+  const optionGroupHTML = (kind, list, label) => list && list.length
+    ? `<div class="opt-group">
+        <div class="opt-group-label">${label} <span class="req-star">*</span></div>
+        <div class="opt-chips">
+          ${list.map((o) => `<button type="button" class="opt-chip ${o.available === false ? "disabled" : ""}" ${o.available === false ? "disabled" : ""} data-name="${escapeHTML(o.name)}" onclick="selectOption('${kind}', this)">${escapeHTML(o.name)}${o.price_delta ? ` <small>+${formatPrice(o.price_delta)}</small>` : ""}</button>`).join("")}
+        </div>
+        ${kind === "material" ? `<div class="opt-desc-line" id="matDescLine"></div>` : ""}
+      </div>`
+    : "";
 
   const orderControls = p.orderable
     ? `
+      ${optionGroupHTML("size", p.sizes, "اختر المقاس")}
+      ${optionGroupHTML("material", p.materials, "اختر الخامة")}
       <div class="detail-actions">
         <div class="qty-control">
           <button onclick="detailQty(-1)">−</button>
           <span id="detailQtyVal">1</span>
           <button onclick="detailQty(1)">+</button>
         </div>
-        <button class="btn btn-primary" onclick="addToCart(${p.id}, getDetailQty())">أضف للسلة 🛒</button>
+        <button class="btn btn-primary" id="detailAddBtn" onclick="addDetailToCart()">أضف للسلة 🛒</button>
       </div>
       ${SETTINGS.whatsapp_order_enabled
         ? `<button class="btn btn-whatsapp" style="width:100%;margin-top:14px;" onclick="orderSingleViaWhatsApp(${p.id})">💬 أو اطلب هذا المنتج عبر واتساب (اختياري)</button>`
@@ -294,7 +314,7 @@ async function renderProductDetail() {
         ${badge}
         <span class="product-cat">${escapeHTML(p.category_name || "")}</span>
         <h1>${escapeHTML(p.name)}</h1>
-        ${priceBlock}
+        <div class="detail-price" id="detailPrice"></div>
         <p class="detail-desc">${escapeHTML(p.description || p.short_description || "")}</p>
 
         ${p.details && p.details.length
@@ -308,6 +328,58 @@ async function renderProductDetail() {
         <div class="detail-note">💡 كل منتجاتنا قابلة للتخصيص — هتقدر تبعتلنا تصميمك أو اسمك بعد الطلب.</div>
       </div>
     </div>`;
+
+  // تهيئة حالة الخيارات والسعر الحي
+  _detailProduct = p;
+  detailSel = { size: null, material: null };
+  updateDetailUI();
+}
+
+// ===== خيارات صفحة المنتج =====
+let _detailProduct = null;
+let detailSel = { size: null, material: null };
+
+function selectOption(kind, btn) {
+  btn.closest(".opt-chips").querySelectorAll(".opt-chip").forEach((b) => b.classList.remove("active"));
+  btn.classList.add("active");
+  detailSel[kind] = btn.dataset.name;
+  if (kind === "material" && _detailProduct) {
+    const m = (_detailProduct.materials || []).find((x) => x.name === btn.dataset.name);
+    const line = document.getElementById("matDescLine");
+    if (line) line.textContent = m && m.desc ? m.desc : "";
+  }
+  updateDetailUI();
+}
+
+function updateDetailUI() {
+  const p = _detailProduct;
+  if (!p) return;
+  const sizeDelta = optionDelta(p, "sizes", detailSel.size);
+  const matDelta = optionDelta(p, "materials", detailSel.material);
+  const el = document.getElementById("detailPrice");
+  if (el) {
+    const unit = Number(p.price) + sizeDelta + matDelta;
+    if (p.offer_active) {
+      const reg = Number(p.regular_price) + sizeDelta + matDelta;
+      el.innerHTML = `<small>${formatPrice(reg)}</small>${formatPrice(unit)} <span class="discount-chip">وفّرت ${p.discount_percent}%</span>`;
+    } else {
+      el.textContent = formatPrice(unit);
+    }
+  }
+  const btn = document.getElementById("detailAddBtn");
+  if (btn) {
+    const need = (p.sizes && p.sizes.length && !detailSel.size) || (p.materials && p.materials.length && !detailSel.material);
+    btn.disabled = !!need;
+    btn.textContent = need ? "اختر الخيارات المطلوبة أولاً" : "أضف للسلة 🛒";
+  }
+}
+
+function addDetailToCart() {
+  const p = _detailProduct;
+  if (!p) return;
+  if (p.sizes && p.sizes.length && !detailSel.size) return showToast("⚠️ من فضلك اختر المقاس");
+  if (p.materials && p.materials.length && !detailSel.material) return showToast("⚠️ من فضلك اختر الخامة");
+  addToCart(p.id, getDetailQty(), { size: detailSel.size, material: detailSel.material });
 }
 
 async function renderRelated(containerId = "relatedGrid") {
@@ -333,12 +405,16 @@ function getDetailQty() {
 // ===== الطلب الاختياري عبر واتساب (يظهر فقط لو مفعّل من لوحة التحكم) =====
 function orderSingleViaWhatsApp(id) {
   if (!SETTINGS.whatsapp_order_enabled || !SETTINGS.store_phone) return;
-  const p = PRODUCTS.find((x) => x.id === id);
+  const p = _detailProduct && _detailProduct.id === id ? _detailProduct : PRODUCTS.find((x) => x.id === id);
   if (!p) return;
+  if (p.sizes && p.sizes.length && !detailSel.size) return showToast("⚠️ من فضلك اختر المقاس أولاً");
+  if (p.materials && p.materials.length && !detailSel.material) return showToast("⚠️ من فضلك اختر الخامة أولاً");
   const qty = getDetailQty();
+  const unit = Number(p.price) + optionDelta(p, "sizes", detailSel.size) + optionDelta(p, "materials", detailSel.material);
+  const opts = [detailSel.size ? `المقاس: ${detailSel.size}` : "", detailSel.material ? `الخامة: ${detailSel.material}` : ""].filter(Boolean).join(" — ");
   const msg =
     `السلام عليكم، حابب أطلب من MY BOX STORE:\n\n` +
-    `${p.name} × ${qty} = ${formatPrice(p.price * qty)}\n\n` +
+    `${p.name} × ${qty} = ${formatPrice(unit * qty)}${opts ? `\n(${opts})` : ""}\n\n` +
     `حابب أعرف تفاصيل التخصيص والتوصيل.`;
   window.open(`https://wa.me/${SETTINGS.store_phone}?text=${encodeURIComponent(msg)}`, "_blank");
 }
@@ -347,11 +423,11 @@ function orderCartViaWhatsApp() {
   if (!SETTINGS.whatsapp_order_enabled || !SETTINGS.store_phone) return;
   const detailed = cartDetailed().filter((p) => p.orderable);
   if (detailed.length === 0) return;
-  const subtotal = detailed.reduce((s, p) => s + p.price * p.qty, 0);
+  const subtotal = detailed.reduce((s, p) => s + p.unit * p.qty, 0);
   const total = subtotal + SETTINGS.shipping_fee;
   let msg = "السلام عليكم، حابب أطلب من MY BOX STORE:\n\n";
   detailed.forEach((p, i) => {
-    msg += `${i + 1}- ${p.name} × ${p.qty} = ${formatPrice(p.price * p.qty)}\n`;
+    msg += `${i + 1}- ${p.name} × ${p.qty} = ${formatPrice(p.unit * p.qty)}\n`;
   });
   msg += `\nالشحن: ${formatPrice(SETTINGS.shipping_fee)}\nالإجمالي: ${formatPrice(total)}`;
   window.open(`https://wa.me/${SETTINGS.store_phone}?text=${encodeURIComponent(msg)}`, "_blank");
@@ -362,7 +438,17 @@ function cartDetailed() {
   return getCart()
     .map((item) => {
       const p = PRODUCTS.find((x) => x.id === item.id);
-      return p ? { ...p, qty: item.qty } : null;
+      if (!p) return null;
+      const sizeDelta = optionDelta(p, "sizes", item.size);
+      const matDelta = optionDelta(p, "materials", item.material);
+      return {
+        ...p,
+        qty: item.qty,
+        size: item.size || null,
+        material: item.material || null,
+        unit: Number(p.price) + sizeDelta + matDelta,
+        _key: lineKey(item),
+      };
     })
     .filter(Boolean);
 }
@@ -389,7 +475,7 @@ async function renderCart() {
   const orderable = detailed.filter((p) => p.orderable);
   const blocked = detailed.filter((p) => !p.orderable);
 
-  const subtotal = orderable.reduce((s, p) => s + p.price * p.qty, 0);
+  const subtotal = orderable.reduce((s, p) => s + p.unit * p.qty, 0);
   const total = subtotal + SETTINGS.shipping_fee;
 
   wrap.innerHTML = `
@@ -402,16 +488,17 @@ async function renderCart() {
             <div class="cart-item-img"><img src="${escapeHTML(p.image || "images/logo.jpeg")}" alt="${escapeHTML(p.name)}" /></div>
             <div class="cart-item-info">
               <h4>${escapeHTML(p.name)}</h4>
+              ${p.size || p.material ? `<div class="cart-item-opts">${[p.size ? "المقاس: " + escapeHTML(p.size) : "", p.material ? "الخامة: " + escapeHTML(p.material) : ""].filter(Boolean).join(" • ")}</div>` : ""}
               ${p.orderable
-                ? `<span class="price">${p.offer_active ? `<small style="text-decoration:line-through;color:var(--muted);">${formatPrice(p.regular_price)}</small> ` : ""}${formatPrice(p.price)}</span>`
+                ? `<span class="price">${formatPrice(p.unit)}</span>`
                 : `<span class="price unavailable-text">⚠️ ${escapeHTML(p.availability_label || "غير متوفر حاليًا")} — لن يُحتسب في الطلب</span>`}
             </div>
             <div class="qty-control">
-              <button onclick="changeQty(${p.id}, -1)">−</button>
+              <button onclick="changeQty('${p._key}', -1)">−</button>
               <span>${p.qty}</span>
-              <button onclick="changeQty(${p.id}, 1)">+</button>
+              <button onclick="changeQty('${p._key}', 1)">+</button>
             </div>
-            <button class="remove-btn" title="حذف" onclick="removeFromCart(${p.id})">🗑️</button>
+            <button class="remove-btn" title="حذف" onclick="removeFromCart('${p._key}')">🗑️</button>
           </div>`
           )
           .join("")}
@@ -723,7 +810,7 @@ function openCheckout() {
   const ckSummary = document.getElementById("ckSummary");
   function updateCkSummary() {
     const detailed = cartDetailed().filter((p) => p.orderable);
-    const subtotal = detailed.reduce((s, p) => s + p.price * p.qty, 0);
+    const subtotal = detailed.reduce((s, p) => s + p.unit * p.qty, 0);
     const city = citySel.value;
     if (!city) {
       shipHint.textContent = "";
@@ -826,7 +913,7 @@ function openReview() {
   const detailed = cartDetailed().filter((p) => p.orderable);
   if (detailed.length === 0) { showToast("⚠️ لا توجد منتجات متاحة في سلتك"); return; }
 
-  const subtotal = detailed.reduce((s, p) => s + p.price * p.qty, 0);
+  const subtotal = detailed.reduce((s, p) => s + p.unit * p.qty, 0);
   const ship = computeShipping(subtotal, info.city);
   const shipping = ship.fee;
   const total = subtotal + shipping;
@@ -844,7 +931,7 @@ function openReview() {
         <div class="review-section">
           <h4>🛒 المنتجات</h4>
           <ul class="review-items" style="padding:0;margin:0;">
-            ${detailed.map((p) => `<li><span>${escapeHTML(p.name)} × ${p.qty}</span><span>${formatPrice(p.price * p.qty)}</span></li>`).join("")}
+            ${detailed.map((p) => `<li><span>${escapeHTML(p.name)} × ${p.qty}${p.size || p.material ? `<br><small style="color:var(--brass-deep);">${[p.size, p.material].filter(Boolean).map(escapeHTML).join(" • ")}</small>` : ""}</span><span>${formatPrice(p.unit * p.qty)}</span></li>`).join("")}
           </ul>
         </div>
         <div class="review-section">
@@ -903,7 +990,7 @@ async function doSubmitOrder(btn, closeReview) {
   btn.textContent = "جارٍ الإرسال...";
 
   const { info, detailed } = _reviewData;
-  const items = detailed.map((p) => ({ product_id: p.id, qty: p.qty }));
+  const items = detailed.map((p) => ({ product_id: p.id, qty: p.qty, size: p.size || undefined, material: p.material || undefined }));
 
   // وضع الاستضافة الثابتة: لا سيرفر → إرسال عبر واتساب
   if (STATIC_MODE) {
@@ -997,7 +1084,7 @@ function copyOrderNumber(num, btn) {
 
 // إرسال الطلب عبر واتساب (وضع الاستضافة الثابتة فقط)
 function submitOrderViaWhatsApp(info, detailed) {
-  const subtotal = detailed.reduce((s, p) => s + p.price * p.qty, 0);
+  const subtotal = detailed.reduce((s, p) => s + p.unit * p.qty, 0);
   const shipping = computeShipping(subtotal, info.city).fee;
   const total = subtotal + shipping;
 
@@ -1009,7 +1096,7 @@ function submitOrderViaWhatsApp(info, detailed) {
   if (info.notes) msg += `🎨 التخصيص/ملاحظات: ${info.notes}\n`;
   msg += "—————————————\n🛒 المنتجات:\n";
   detailed.forEach((p, i) => {
-    msg += `${i + 1}- ${p.name} × ${p.qty} = ${formatPrice(p.price * p.qty)}\n`;
+    msg += `${i + 1}- ${p.name} × ${p.qty} = ${formatPrice(p.unit * p.qty)}\n`;
   });
   msg += `—————————————\nالشحن: ${formatPrice(shipping)}\n💰 *الإجمالي: ${formatPrice(total)}*\n💵 الدفع عند الاستلام`;
 

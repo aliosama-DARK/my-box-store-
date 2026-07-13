@@ -323,11 +323,14 @@ async function openOrder(id) {
           <div class="k">🛒 المنتجات المطلوبة</div>
           ${items.length
             ? `<ul class="items-list">
-                ${items.map((it) => `
+                ${items.map((it) => {
+                  const opts = [it.selected_size ? `المقاس: ${esc(it.selected_size)}` : "", it.selected_material ? `الخامة: ${esc(it.selected_material)}` : ""].filter(Boolean).join(" • ");
+                  return `
                   <li>
-                    <span>${esc(it.product_name)} × ${esc(it.quantity)} <small style="color:var(--muted);">(${fmtPrice(it.unit_price)} للقطعة)</small></span>
+                    <span>${esc(it.product_name)} × ${esc(it.quantity)} <small style="color:var(--muted);">(${fmtPrice(it.unit_price)} للقطعة)</small>${opts ? `<br><small style="color:var(--primary);">${opts}</small>` : ""}</span>
                     <span class="line-total">${fmtPrice(it.total_price)}</span>
-                  </li>`).join("")}
+                  </li>`;
+                }).join("")}
                 <li><span><strong>الإجمالي (شامل الشحن)</strong></span><span class="line-total">${fmtPrice(order.total_price)}</span></li>
               </ul>`
             : `<div class="v">—</div>`}
@@ -494,21 +497,21 @@ async function loadProducts() {
 
 function productStatusBadges(p) {
   const badges = [];
-  if (p.is_hidden) badges.push(`<span class="status-badge cancelled">🙈 مخفي مؤقتًا</span>`);
+  if (!p.is_visible) badges.push(`<span class="status-badge cancelled">🙈 مخفي مؤقتًا</span>`);
   else if (p.stock_status === "out_of_stock") badges.push(`<span class="status-badge pending_confirmation">📭 نفدت الكمية</span>`);
-  else if (p.product_status === "unavailable") badges.push(`<span class="status-badge cancelled">🚫 غير متاح</span>`);
   else badges.push(`<span class="status-badge completed">✅ متاح</span>`);
   if (p.offer_active) badges.push(`<span class="status-badge offer">🔥 خصم ${p.discount_percent}%</span>`);
-  else if (p.has_offer) badges.push(`<span class="status-badge muted-badge">⏸ عرض غير نشط</span>`);
   if (p.is_featured) badges.push(`<span class="status-badge featured">⭐ مميز</span>`);
+  if ((p.sizes && p.sizes.length) || (p.materials && p.materials.length))
+    badges.push(`<span class="status-badge muted-badge">⚙️ خيارات</span>`);
   return badges.join(" ");
 }
 
 function productPriceHTML(p) {
   if (p.offer_active) {
-    return `<small style="text-decoration:line-through;color:var(--muted);display:block;">${fmtPrice(p.regular_price)}</small><strong style="color:var(--c-red);">${fmtPrice(p.sale_price)}</strong>`;
+    return `<small style="text-decoration:line-through;color:var(--muted);display:block;">${fmtPrice(p.price)}</small><strong style="color:var(--c-red);">${fmtPrice(p.sale_price)}</strong>`;
   }
-  return `<strong>${fmtPrice(p.regular_price)}</strong>`;
+  return `<strong>${fmtPrice(p.price)}</strong>`;
 }
 
 function productsTableHTML(products) {
@@ -529,30 +532,27 @@ function productsTableHTML(products) {
         ${products
           .map(
             (p) => `
-          <tr class="${p.is_hidden ? "row-hidden" : ""}">
+          <tr class="${p.is_visible ? "" : "row-hidden"}">
             <td>
               <div class="prod-cell">
-                <img class="prod-thumb" src="../${esc(p.image || "images/logo.jpeg")}" alt="" onerror="this.src='../images/logo.jpeg'" />
+                <img class="prod-thumb" src="${p.images && p.images[0] ? "../" + esc(p.images[0]) : "../images/logo.jpeg"}" alt="" onerror="this.src='../images/logo.jpeg'" />
                 <span class="prod-name">${esc(p.name)}</span>
               </div>
             </td>
             <td style="white-space:nowrap;">${esc(p.category_name || "—")}</td>
             <td style="white-space:nowrap;">${productPriceHTML(p)}</td>
-            <td style="white-space:nowrap;">${p.stock_quantity === null || p.stock_quantity === undefined ? "غير محدودة" : p.stock_quantity}</td>
+            <td style="white-space:nowrap;">${p.quantity === null || p.quantity === undefined ? "غير محدودة" : p.quantity}</td>
             <td>${productStatusBadges(p)}</td>
-            <td>${p.sort_order}</td>
+            <td>${p.display_order}</td>
             <td>
               <div class="row-actions">
                 <button class="mini-btn view" onclick="openProductForm(${p.id})">✏️ تعديل</button>
-                ${p.is_hidden
-                  ? `<button class="mini-btn show" onclick="quickUpdateProduct(${p.id}, {is_hidden: 0}, 'تم إظهار المنتج في الموقع')">👁 إظهار</button>`
-                  : `<button class="mini-btn hide" onclick="quickUpdateProduct(${p.id}, {is_hidden: 1}, 'تم إخفاء المنتج مؤقتًا من الموقع')">🙈 إخفاء</button>`}
-                ${!p.is_hidden && p.product_status === "available"
-                  ? `<button class="mini-btn hide" onclick="quickUpdateProduct(${p.id}, {product_status: 'unavailable'}, 'تم وضع المنتج كغير متوفر حاليًا')">🚫 غير متاح</button>`
-                  : ""}
-                ${!p.is_hidden && p.product_status === "unavailable"
-                  ? `<button class="mini-btn show" onclick="quickUpdateProduct(${p.id}, {product_status: 'available'}, 'المنتج أصبح متاحًا')">✅ إتاحة</button>`
-                  : ""}
+                ${p.is_visible
+                  ? `<button class="mini-btn hide" onclick="quickUpdateProduct(${p.id}, {is_visible: false}, 'تم إخفاء المنتج مؤقتًا من الموقع')">🙈 إخفاء</button>`
+                  : `<button class="mini-btn show" onclick="quickUpdateProduct(${p.id}, {is_visible: true}, 'تم إظهار المنتج في الموقع')">👁 إظهار</button>`}
+                ${p.stock_status === "in_stock"
+                  ? `<button class="mini-btn hide" onclick="quickUpdateProduct(${p.id}, {stock_status: 'out_of_stock'}, 'تم وضع المنتج كنافد الكمية')">📭 نفدت</button>`
+                  : `<button class="mini-btn show" onclick="quickUpdateProduct(${p.id}, {stock_status: 'in_stock'}, 'المنتج أصبح متوفرًا')">✅ متوفر</button>`}
                 <button class="mini-btn danger" onclick="deleteProduct(${p.id}, '${esc(p.name).replace(/'/g, "\\'")}')">🗑️</button>
               </div>
             </td>
@@ -590,9 +590,9 @@ function openProductForm(id) {
   const p = id ? PRODUCTS_CACHE.find((x) => x.id === id) : null;
   pendingImageData = null;
 
-  let details = [];
-  try { details = JSON.parse((p && p.details_json) || "[]"); } catch { details = []; }
+  const details = p && Array.isArray(p.specifications) ? p.specifications : [];
   const detailsText = details.map((r) => `${r[0]} | ${r[1]}`).join("\n");
+  const mainImg = p && Array.isArray(p.images) && p.images[0] ? p.images[0] : "";
 
   document.getElementById("productModalTitle").textContent = p ? `تعديل: ${p.name}` : "إضافة منتج جديد";
   document.getElementById("productModalBody").innerHTML = `
@@ -605,9 +605,9 @@ function openProductForm(id) {
       <div class="form-group">
         <label>صورة المنتج</label>
         <div class="img-upload-row">
-          <img id="pfImgPreview" class="img-preview" src="${p && p.image ? "../" + esc(p.image) : "../images/logo.jpeg"}" onerror="this.src='../images/logo.jpeg'" />
+          <img id="pfImgPreview" class="img-preview" src="${mainImg ? "../" + esc(mainImg) : "../images/logo.jpeg"}" onerror="this.src='../images/logo.jpeg'" />
           <div style="flex:1;">
-            <input type="file" id="pfImageFile" accept="image/png,image/jpeg,image/webp,image/gif">
+            <input type="file" id="pfImageFile" accept="image/png,image/jpeg,image/webp">
             <small style="color:var(--muted);display:block;margin-top:4px;">PNG / JPG / WEBP — حتى 3 ميجابايت</small>
           </div>
         </div>
@@ -617,12 +617,13 @@ function openProductForm(id) {
         <div class="form-group">
           <label>التصنيف</label>
           <select id="pfCat">
+            <option value="">— بدون فئة —</option>
             ${CATEGORIES.map((c) => `<option value="${c.id}" ${p && p.category_id === c.id ? "selected" : ""}>${esc(c.name)}</option>`).join("")}
           </select>
         </div>
         <div class="form-group">
           <label>الترتيب في صفحة المنتجات</label>
-          <input type="number" id="pfSort" value="${p ? p.sort_order : ""}" placeholder="تلقائي">
+          <input type="number" id="pfSort" value="${p ? p.display_order : ""}" placeholder="تلقائي">
         </div>
       </div>
 
@@ -632,7 +633,7 @@ function openProductForm(id) {
       </div>
       <div class="form-group">
         <label>الوصف التفصيلي</label>
-        <textarea id="pfDesc" rows="3" placeholder="وصف كامل يظهر في صفحة المنتج">${esc(p ? p.description || "" : "")}</textarea>
+        <textarea id="pfDesc" rows="3" placeholder="وصف كامل يظهر في صفحة المنتج">${esc(p ? p.full_description || "" : "")}</textarea>
       </div>
       <div class="form-group">
         <label>المواصفات (سطر لكل خاصية بصيغة: الاسم | القيمة)</label>
@@ -643,37 +644,26 @@ function openProductForm(id) {
       <div class="form-2col">
         <div class="form-group">
           <label>السعر الأساسي (ج.م) *</label>
-          <input type="number" id="pfPrice" min="0" step="0.5" value="${p ? p.regular_price : ""}" oninput="updateDiscountHint()">
+          <input type="number" id="pfPrice" min="0" step="0.5" value="${p ? p.price : ""}" oninput="updateDiscountHint()">
         </div>
         <div class="form-group">
-          <label>سعر العرض (ج.م)</label>
-          <input type="number" id="pfSalePrice" min="0" step="0.5" value="${p && p.sale_price !== null && p.sale_price !== undefined ? p.sale_price : ""}" oninput="updateDiscountHint()">
+          <label>سعر العرض (ج.م) <span id="discountHint" class="discount-hint"></span></label>
+          <input type="number" id="pfSalePrice" min="0" step="0.5" value="${p && p.sale_price !== null && p.sale_price !== undefined ? p.sale_price : ""}" oninput="updateDiscountHint()" placeholder="اتركه فارغاً = لا يوجد عرض">
         </div>
       </div>
-      <label class="check-row">
-        <input type="checkbox" id="pfHasOffer" ${p && p.has_offer ? "checked" : ""} onchange="updateDiscountHint()">
-        <span>تفعيل العرض <span id="discountHint" class="discount-hint"></span></span>
-      </label>
       <div class="form-2col">
         <div class="form-group">
           <label>بداية العرض (اختياري)</label>
-          <input type="date" id="pfOfferStart" value="${esc(p ? p.offer_start_date || "" : "")}">
+          <input type="date" id="pfOfferStart" value="${esc(p ? (p.offer_start_date || "").slice(0,10) : "")}">
         </div>
         <div class="form-group">
           <label>نهاية العرض (اختياري)</label>
-          <input type="date" id="pfOfferEnd" value="${esc(p ? p.offer_end_date || "" : "")}">
+          <input type="date" id="pfOfferEnd" value="${esc(p ? (p.offer_end_date || "").slice(0,10) : "")}">
         </div>
       </div>
 
-      <h3 class="pform-section">📦 التوفر والحالة</h3>
+      <h3 class="pform-section">📦 التوفر</h3>
       <div class="form-2col">
-        <div class="form-group">
-          <label>حالة المنتج</label>
-          <select id="pfStatus">
-            <option value="available" ${!p || p.product_status === "available" ? "selected" : ""}>✅ متاح</option>
-            <option value="unavailable" ${p && p.product_status === "unavailable" ? "selected" : ""}>🚫 غير متاح حاليًا</option>
-          </select>
-        </div>
         <div class="form-group">
           <label>حالة المخزون</label>
           <select id="pfStock">
@@ -681,21 +671,29 @@ function openProductForm(id) {
             <option value="out_of_stock" ${p && p.stock_status === "out_of_stock" ? "selected" : ""}>📭 نفدت الكمية</option>
           </select>
         </div>
-      </div>
-      <div class="form-group">
-        <label>الكمية المتاحة (اتركها فارغة = غير محدودة، تُخصم تلقائياً مع كل طلب)</label>
-        <input type="number" id="pfQty" min="0" value="${p && p.stock_quantity !== null && p.stock_quantity !== undefined ? p.stock_quantity : ""}">
+        <div class="form-group">
+          <label>الكمية المتاحة (فارغة = غير محدودة)</label>
+          <input type="number" id="pfQty" min="0" value="${p && p.quantity !== null && p.quantity !== undefined ? p.quantity : ""}">
+        </div>
       </div>
       <label class="check-row">
         <input type="checkbox" id="pfFeatured" ${p && p.is_featured ? "checked" : ""}>
         <span>⭐ منتج مميز</span>
       </label>
       <label class="check-row">
-        <input type="checkbox" id="pfHidden" ${p && p.is_hidden ? "checked" : ""}>
+        <input type="checkbox" id="pfHidden" ${p && p.is_visible === false ? "checked" : ""}>
         <span>🙈 مخفي مؤقتًا (لا يظهر للعملاء نهائيًا)</span>
       </label>
 
-      <div class="form-group" style="margin-top:10px;">
+      <h3 class="pform-section">📏 المقاسات (اختياري — يختار العميل واحداً إن وُجدت)</h3>
+      <div id="pfSizes" class="opt-list"></div>
+      <button type="button" class="mini-btn" onclick="addOptRow('pfSizes')">➕ إضافة مقاس</button>
+
+      <h3 class="pform-section">🧵 الخامات (اختياري — يختار العميل واحدة إن وُجدت)</h3>
+      <div id="pfMaterials" class="opt-list opt-list-mat"></div>
+      <button type="button" class="mini-btn" onclick="addOptRow('pfMaterials', true)">➕ إضافة خامة</button>
+
+      <div class="form-group" style="margin-top:14px;">
         <label>ملاحظات داخلية للإدارة</label>
         <textarea id="pfNotes" rows="2" placeholder="مثال: المورّد فلان، التكلفة كذا...">${esc(p ? p.internal_notes || "" : "")}</textarea>
       </div>
@@ -722,8 +720,40 @@ function openProductForm(id) {
     reader.readAsDataURL(file);
   });
 
+  // تعبئة صفوف المقاسات/الخامات الموجودة
+  (p && Array.isArray(p.sizes) ? p.sizes : []).forEach((s) => addOptRow("pfSizes", false, s));
+  (p && Array.isArray(p.materials) ? p.materials : []).forEach((m) => addOptRow("pfMaterials", true, m));
+
   updateDiscountHint();
   document.getElementById("productModal").classList.add("open");
+}
+
+// صف خيار (مقاس/خامة) قابل للتكرار
+function addOptRow(containerId, isMaterial, data) {
+  const wrap = document.getElementById(containerId);
+  if (!wrap) return;
+  const row = document.createElement("div");
+  row.className = "opt-row";
+  const d = data || {};
+  row.innerHTML = `
+    <input class="opt-name" placeholder="${isMaterial ? "اسم الخامة" : "اسم المقاس"}" value="${esc(d.name || "")}">
+    <input class="opt-price" type="number" step="0.5" placeholder="+سعر" value="${d.price_delta != null ? d.price_delta : ""}" title="سعر إضافي (اختياري)">
+    ${isMaterial ? `<input class="opt-desc" placeholder="وصف قصير (اختياري)" value="${esc(d.desc || "")}">` : ""}
+    <label class="opt-avail"><input type="checkbox" class="opt-av" ${d.available === false ? "" : "checked"}> متاح</label>
+    <button type="button" class="mini-btn danger" onclick="this.closest('.opt-row').remove()">✕</button>`;
+  wrap.appendChild(row);
+}
+
+function collectOpts(containerId, isMaterial) {
+  return [...document.querySelectorAll(`#${containerId} .opt-row`)].map((row) => {
+    const o = {
+      name: row.querySelector(".opt-name").value.trim(),
+      price_delta: Number(row.querySelector(".opt-price").value) || 0,
+      available: row.querySelector(".opt-av").checked,
+    };
+    if (isMaterial) o.desc = (row.querySelector(".opt-desc")?.value || "").trim();
+    return o;
+  }).filter((o) => o.name);
 }
 
 function updateDiscountHint() {
@@ -731,11 +761,10 @@ function updateDiscountHint() {
   if (!hint) return;
   const price = Number(document.getElementById("pfPrice").value);
   const sale = Number(document.getElementById("pfSalePrice").value);
-  const on = document.getElementById("pfHasOffer").checked;
-  if (on && price > 0 && sale > 0 && sale < price) {
-    hint.textContent = `— خصم ${Math.round((1 - sale / price) * 100)}% تلقائيًا`;
-  } else if (on && sale >= price && price > 0) {
-    hint.textContent = "— ⚠️ سعر العرض يجب أن يكون أقل من الأساسي";
+  if (price > 0 && sale > 0 && sale < price) {
+    hint.textContent = `(خصم ${Math.round((1 - sale / price) * 100)}%)`;
+  } else if (sale > 0 && sale >= price && price > 0) {
+    hint.textContent = "⚠️ يجب أن يكون أقل من الأساسي";
   } else {
     hint.textContent = "";
   }
@@ -759,11 +788,10 @@ async function saveProduct(id) {
   if (!name || name.length < 2) return showToast("⚠️ اكتب اسم المنتج", "error");
   if (!(price > 0)) return showToast("⚠️ اكتب سعرًا أساسيًا صحيحًا", "error");
 
-  const hasOffer = document.getElementById("pfHasOffer").checked;
   const saleRaw = document.getElementById("pfSalePrice").value;
   const sale = saleRaw === "" ? null : Number(saleRaw);
-  if (hasOffer && (!sale || sale <= 0 || sale >= price))
-    return showToast("⚠️ لتفعيل العرض اكتب سعر عرض أقل من السعر الأساسي", "error");
+  if (sale !== null && (!(sale > 0) || sale >= price))
+    return showToast("⚠️ سعر العرض يجب أن يكون أقل من السعر الأساسي وأكبر من صفر", "error");
 
   btn.disabled = true;
   btn.textContent = "جارٍ الحفظ...";
@@ -781,25 +809,25 @@ async function saveProduct(id) {
 
     const payload = {
       name,
-      regular_price: price,
+      price,
       sale_price: sale,
-      has_offer: hasOffer ? 1 : 0,
       offer_start_date: document.getElementById("pfOfferStart").value || null,
       offer_end_date: document.getElementById("pfOfferEnd").value || null,
       category_id: Number(document.getElementById("pfCat").value) || null,
       short_description: document.getElementById("pfShortDesc").value.trim(),
-      description: document.getElementById("pfDesc").value.trim(),
-      details: parseDetailsText(document.getElementById("pfDetails").value),
-      product_status: document.getElementById("pfStatus").value,
+      full_description: document.getElementById("pfDesc").value.trim(),
+      specifications: parseDetailsText(document.getElementById("pfDetails").value),
       stock_status: document.getElementById("pfStock").value,
-      stock_quantity: document.getElementById("pfQty").value === "" ? null : Number(document.getElementById("pfQty").value),
-      is_featured: document.getElementById("pfFeatured").checked ? 1 : 0,
-      is_hidden: document.getElementById("pfHidden").checked ? 1 : 0,
+      quantity: document.getElementById("pfQty").value === "" ? null : Number(document.getElementById("pfQty").value),
+      is_featured: document.getElementById("pfFeatured").checked,
+      is_visible: !document.getElementById("pfHidden").checked,
       internal_notes: document.getElementById("pfNotes").value.trim(),
+      sizes: collectOpts("pfSizes", false),
+      materials: collectOpts("pfMaterials", true),
     };
     const sortVal = document.getElementById("pfSort").value;
-    if (sortVal !== "") payload.sort_order = Number(sortVal);
-    if (imagePath) payload.image = imagePath;
+    if (sortVal !== "") payload.display_order = Number(sortVal);
+    if (imagePath) payload.images = [imagePath];
 
     if (id) {
       await api(`/api/admin/products?id=${id}`, { method: "PATCH", body: JSON.stringify(payload) });

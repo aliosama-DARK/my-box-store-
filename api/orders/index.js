@@ -1,7 +1,7 @@
 // إنشاء طلب من الموقع — الأسعار تُحسب من قاعدة البيانات (أمان) + حفظ المرفقات
 const { getSql, getPool, ensureSchema, getSetting, resolveShipping } = require("../_lib/db");
 const { sendJSON, readJson, cleanStr, normalizePhone, makeRateLimiter, clientIp } = require("../_lib/util");
-const { offerActive, isOrderable, num } = require("../_lib/serialize");
+const { offerActive, isOrderable, num, asArray } = require("../_lib/serialize");
 
 const limiter = makeRateLimiter(10, 10 * 60 * 1000);
 const ALLOWED_MIME = ["image/jpeg", "image/png", "image/webp"];
@@ -60,8 +60,24 @@ module.exports = async (req, res) => {
       if (!Number.isInteger(pid)) return sendJSON(res, 400, { error: "منتج غير صالح" });
       const p = (await sql`SELECT * FROM products WHERE id = ${pid}`)[0];
       if (!p || !isOrderable(p)) return sendJSON(res, 400, { error: `منتج غير متوفر حاليًا: ${p ? p.name : "#" + pid}` });
-      const unit = offerActive(p) ? num(p.sale_price) : num(p.price);
-      items.push({ id: p.id, name: p.name, qty, unit });
+      let unit = offerActive(p) ? num(p.sale_price) : num(p.price);
+      let selSize = null, selMaterial = null;
+      const sizes = asArray(p.sizes), materials = asArray(p.materials);
+      if (sizes.length) {
+        const s = sizes.find((x) => x.name === cleanStr(raw && raw.size, 60));
+        if (!s) return sendJSON(res, 400, { error: `اختر مقاساً صحيحاً لمنتج "${p.name}"` });
+        if (s.available === false) return sendJSON(res, 400, { error: `المقاس المختار لمنتج "${p.name}" غير متاح` });
+        unit += Number(s.price_delta) || 0;
+        selSize = s.name;
+      }
+      if (materials.length) {
+        const m = materials.find((x) => x.name === cleanStr(raw && raw.material, 60));
+        if (!m) return sendJSON(res, 400, { error: `اختر خامة صحيحة لمنتج "${p.name}"` });
+        if (m.available === false) return sendJSON(res, 400, { error: `الخامة المختارة لمنتج "${p.name}" غير متاحة` });
+        unit += Number(m.price_delta) || 0;
+        selMaterial = m.name;
+      }
+      items.push({ id: p.id, name: p.name, qty, unit, size: selSize, material: selMaterial });
     }
 
     const subtotal = items.reduce((s, it) => s + it.unit * it.qty, 0);
@@ -89,9 +105,9 @@ module.exports = async (req, res) => {
       await client.query(`UPDATE orders SET order_number = $1 WHERE id = $2`, [orderNumber, orderId]);
       for (const it of items) {
         await client.query(
-          `INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, total_price)
-           VALUES ($1,$2,$3,$4,$5,$6)`,
-          [orderId, it.id, it.name, it.qty, it.unit, it.unit * it.qty]
+          `INSERT INTO order_items (order_id, product_id, product_name, quantity, unit_price, total_price, selected_size, selected_material)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+          [orderId, it.id, it.name, it.qty, it.unit, it.unit * it.qty, it.size, it.material]
         );
       }
       for (const a of attachments) {
